@@ -1,0 +1,2 @@
+import {describe,it,expect} from 'vitest';import {isInsideMkad,splitRouteByMkad} from '@/lib/mkad';
+describe('MKAD',()=>{it('recognizes Moscow center as inside',()=>expect(isInsideMkad([37.6176,55.7558])).toBe(true));it('recognizes Podolsk as outside',()=>expect(isInsideMkad([37.5447,55.4312])).toBe(false));it('splits a southbound line',()=>{const x=splitRouteByMkad([[37.62,55.75],[37.62,55.50]]);expect(x.insideKm).toBeGreaterThan(0);expect(x.outsideKm).toBeGreaterThan(0);expect(x.crossings.length).toBeGreaterThan(0)})});

@@ -1,0 +1,3 @@
+import { NextResponse } from 'next/server';import { prisma } from '@/lib/db';import { requireAdmin } from '@/lib/auth';import { jsonSafe } from '@/lib/serial';
+export async function GET(){try{await requireAdmin();return NextResponse.json(jsonSafe(await prisma.additionalService.findMany({orderBy:{name:'asc'}})));}catch{return NextResponse.json({error:'Unauthorized'},{status:401});}}
+export async function POST(req:Request){try{await requireAdmin();const b=await req.json();const row=await prisma.additionalService.create({data:{name:b.name,priceType:b.priceType,priceValue:b.priceValue,isActive:true}});return NextResponse.json(jsonSafe(row));}catch(e:any){return NextResponse.json({error:e.message},{status:400});}}

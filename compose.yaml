@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+    networks:
+      - brt-network
+
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: "no"
+
+    networks:
+      - brt-network
+
+
+  osrm:
+    image: osrm/osrm-backend
+    restart: unless-stopped
+
+    command:
+      - osrm-routed
+      - --algorithm
+      - mld
+      - ${OSRM_DATASET}
+
+    volumes:
+      - ./osrm-data:/data:ro
+
+    expose:
+      - "5000"
+
+    networks:
+      - brt-network
+
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+
+      args:
+        NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY}
+
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+
+      DATABASE_URL: ${DATABASE_URL}
+
+      OSRM_BASE_URL: http://osrm:5000
+
+      YANDEX_GEOCODER_API_KEY: ${YANDEX_GEOCODER_API_KEY}
+      YANDEX_GEOSUGGEST_API_KEY: ${YANDEX_GEOSUGGEST_API_KEY}
+      
+
+      NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY}
+
+      AUTH_SECRET: ${AUTH_SECRET}
+
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      migrate:
+        condition: service_completed_successfully
+
+      osrm:
+        condition: service_started
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    networks:
+      - brt-network
+
+
+volumes:
+  postgres_data:
+
+
+networks:
+  brt-network:
+    driver: bridge

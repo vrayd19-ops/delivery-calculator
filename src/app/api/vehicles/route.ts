@@ -1,0 +1,2 @@
+import { NextResponse } from 'next/server'; import { prisma } from '@/lib/db'; import { jsonSafe } from '@/lib/serial';
+export async function GET(){ const [vehicles,services,settings]=await Promise.all([prisma.vehicleType.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}}),prisma.additionalService.findMany({where:{isActive:true},orderBy:{name:'asc'}}),prisma.appSettings.findUnique({where:{id:'global'}})]); return NextResponse.json(jsonSafe({vehicles,services,settings})); }
