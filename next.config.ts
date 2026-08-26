@@ -3,13 +3,14 @@ import type {
 } from 'next';
 
 
-const nextConfig:
-  NextConfig = {
+const nextConfig: NextConfig = {
   reactStrictMode:
     true,
 
   output:
-    'standalone',
+    process.env.VERCEL
+      ? undefined
+      : 'standalone',
 };
 
 
