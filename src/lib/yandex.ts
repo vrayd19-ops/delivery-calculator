@@ -4,32 +4,72 @@ import type {
   RouteResult,
 } from './types';
 
-function requireKey(name: string) {
-  const value = process.env[name];
+
+function requireKey(
+  name: string
+) {
+  const value =
+    process.env[name];
 
   if (!value) {
-    throw new Error(`Не настроена переменная ${name}`);
+    throw new Error(
+      `Не настроена переменная ${name}`
+    );
   }
 
   return value;
 }
 
-export async function suggestAddress(text: string) {
-  const key = requireKey('YANDEX_GEOSUGGEST_API_KEY');
 
-  const url = new URL(
-    'https://suggest-maps.yandex.ru/v1/suggest'
+/*
+ * =========================================
+ * ПОДСКАЗКИ АДРЕСОВ
+ * =========================================
+ */
+export async function suggestAddress(
+  text: string
+) {
+  const key =
+    requireKey(
+      'YANDEX_GEOSUGGEST_API_KEY'
+    );
+
+  const url =
+    new URL(
+      'https://suggest-maps.yandex.ru/v1/suggest'
+    );
+
+  url.searchParams.set(
+    'apikey',
+    key
   );
 
-  url.searchParams.set('apikey', key);
-  url.searchParams.set('text', text);
-  url.searchParams.set('lang', 'ru_RU');
-  url.searchParams.set('print_address', '1');
+  url.searchParams.set(
+    'text',
+    text
+  );
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    cache: 'no-store',
-  });
+  url.searchParams.set(
+    'lang',
+    'ru_RU'
+  );
+
+  url.searchParams.set(
+    'print_address',
+    '1'
+  );
+
+  const response =
+    await fetch(
+      url.toString(),
+      {
+        method:
+          'GET',
+
+        cache:
+          'no-store',
+      }
+    );
 
   if (!response.ok) {
     throw new Error(
@@ -37,91 +77,143 @@ export async function suggestAddress(text: string) {
     );
   }
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
-  return (data.results ?? []).map((item: any) => ({
-    title:
-      item.title?.text ??
-      item.text ??
-      '',
+  return (
+    data.results ??
+    []
+  ).map(
+    (
+      item: any
+    ) => ({
+      title:
+        item.title
+          ?.text ??
+        item.text ??
+        '',
 
-    subtitle:
-      item.subtitle?.text ??
-      '',
+      subtitle:
+        item.subtitle
+          ?.text ??
+        '',
 
-    address:
-      item.address?.formatted_address ??
-      item.text ??
-      '',
+      address:
+        item.address
+          ?.formatted_address ??
+        item.text ??
+        '',
 
-    uri:
-      item.uri ?? null,
-  }));
+      uri:
+        item.uri ??
+        null,
+    })
+  );
 }
 
+
+/*
+ * =========================================
+ * ГЕОКОДИРОВАНИЕ АДРЕСА
+ * =========================================
+ */
 export async function geocodeAddress(
   input: {
     text?: string;
     uri?: string;
   }
 ): Promise<AddressPoint[]> {
-  const key = requireKey('YANDEX_GEOCODER_API_KEY');
+  const key =
+    requireKey(
+      'YANDEX_GEOCODER_API_KEY'
+    );
 
-  const url = new URL(
-    'https://geocode-maps.yandex.ru/v1/'
-  );
+  const url =
+    new URL(
+      'https://geocode-maps.yandex.ru/v1/'
+    );
 
-  url.searchParams.set('apikey', key);
-  url.searchParams.set('lang', 'ru_RU');
-  url.searchParams.set('format', 'json');
-  url.searchParams.set('results', '5');
-
- if (input.uri) {
-  /*
-   * Если адрес был выбран из Геосаджеста,
-   * используем точный URI выбранного объекта.
-   *
-   * Это не дает Геокодеру выбрать другой
-   * одноименный адрес.
-   */
   url.searchParams.set(
-    'uri',
-    input.uri
+    'apikey',
+    key
   );
 
-  /*
-   * geocode является обязательным
-   * параметром API, поэтому передаем
-   * текст выбранного адреса дополнительно.
-   */
   url.searchParams.set(
-    'geocode',
-    input.text || ''
+    'lang',
+    'ru_RU'
   );
 
-  /*
-   * Нам нужен именно выбранный объект.
-   */
+  url.searchParams.set(
+    'format',
+    'json'
+  );
+
   url.searchParams.set(
     'results',
-    '1'
+    '5'
   );
-} else {
-  url.searchParams.set(
-    'geocode',
-    input.text || ''
-  );
-}
 
+
+  if (input.uri) {
+    /*
+     * Если адрес был выбран
+     * из Геосаджеста,
+     * используем URI объекта.
+     */
+    url.searchParams.set(
+      'uri',
+      input.uri
+    );
+
+    /*
+     * geocode остаётся
+     * обязательным параметром.
+     */
+    url.searchParams.set(
+      'geocode',
+      input.text ||
+        ''
+    );
+
+    /*
+     * Нужен только
+     * выбранный объект.
+     */
+    url.searchParams.set(
+      'results',
+      '1'
+    );
+  } else {
+    url.searchParams.set(
+      'geocode',
+      input.text ||
+        ''
+    );
+  }
+
+
+  /*
+   * Ограничиваем поиск
+   * Москвой и Московской областью.
+   */
   url.searchParams.set(
     'bbox',
     '36.7,54.7~39.3,56.6'
   );
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    cache: 'no-store',
-  });
+
+  const response =
+    await fetch(
+      url.toString(),
+      {
+        method:
+          'GET',
+
+        cache:
+          'no-store',
+      }
+    );
+
 
   if (!response.ok) {
     throw new Error(
@@ -129,41 +221,78 @@ export async function geocodeAddress(
     );
   }
 
-  const data = await response.json();
+
+  const data =
+    await response.json();
+
 
   const members =
-    data.response?.GeoObjectCollection?.featureMember ?? [];
+    data.response
+      ?.GeoObjectCollection
+      ?.featureMember ??
+    [];
 
-  return members.map((member: any) => {
-    const geoObject = member.GeoObject;
 
-    const [longitude, latitude] =
-      String(geoObject.Point.pos)
-        .split(' ')
-        .map(Number);
+  return members.map(
+    (
+      member: any
+    ) => {
+      const geoObject =
+        member.GeoObject;
 
-    const meta =
-      geoObject.metaDataProperty?.GeocoderMetaData;
 
-    return {
-      displayAddress:
-        meta?.text ??
-        geoObject.name,
+      const [
+        longitude,
+        latitude,
+      ] =
+        String(
+          geoObject
+            .Point
+            .pos
+        )
+          .split(
+            ' '
+          )
+          .map(
+            Number
+          );
 
-      normalizedAddress:
-        meta?.Address?.formatted ??
-        meta?.text ??
-        geoObject.name,
 
-      longitude,
-      latitude,
+      const meta =
+        geoObject
+          .metaDataProperty
+          ?.GeocoderMetaData;
 
-      uri:
-        geoObject.uri,
-    };
-  });
+
+      return {
+        displayAddress:
+          meta?.text ??
+          geoObject.name,
+
+        normalizedAddress:
+          meta
+            ?.Address
+            ?.formatted ??
+          meta?.text ??
+          geoObject.name,
+
+        longitude,
+
+        latitude,
+
+        uri:
+          geoObject.uri,
+      };
+    }
+  );
 }
 
+
+/*
+ * =========================================
+ * ПОСТРОЕНИЕ МАРШРУТА ЧЕРЕЗ OSRM
+ * =========================================
+ */
 export async function buildDrivingRoute(
   points: Coordinate[],
   _truck?: {
@@ -173,70 +302,133 @@ export async function buildDrivingRoute(
     payload?: number;
   }
 ): Promise<RouteResult> {
-  if (points.length < 2) {
+  if (
+    points.length <
+    2
+  ) {
     throw new Error(
       'Для построения маршрута нужно минимум две точки'
     );
   }
 
+
+  /*
+   * На локальном компьютере
+   * можно использовать свой OSRM.
+   *
+   * На Vercel используем
+   * публичный OSRM,
+   * если переменная не задана.
+   */
   const baseUrl =
-    process.env.OSRM_BASE_URL ||
-    'http://localhost:5000';
+    process.env
+      .OSRM_BASE_URL ||
+    'https://router.project-osrm.org';
+
 
   /*
    * Coordinate внутри приложения:
+   *
    * [longitude, latitude]
    *
    * OSRM использует тот же порядок:
+   *
    * longitude,latitude
    */
-  const coordinatesString = points
-    .map(
-      ([longitude, latitude]) =>
-        `${longitude},${latitude}`
-    )
-    .join(';');
+  const coordinatesString =
+    points
+      .map(
+        (
+          [
+            longitude,
+            latitude,
+          ]
+        ) =>
+          `${longitude},${latitude}`
+      )
+      .join(
+        ';'
+      );
 
-  const url = new URL(
-    `/route/v1/driving/${coordinatesString}`,
-    baseUrl
-  );
+
+  const url =
+    new URL(
+      `/route/v1/driving/${coordinatesString}`,
+      baseUrl
+    );
+
 
   url.searchParams.set(
     'overview',
     'full'
   );
 
+
   url.searchParams.set(
     'geometries',
     'geojson'
   );
 
+
   url.searchParams.set(
     'steps',
     'false'
   );
-  url.searchParams.set(
-  'exclude',
-  'toll'
-);
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    cache: 'no-store',
-  });
 
+  /*
+   * ВАЖНО:
+   *
+   * exclude=toll здесь НЕ используем.
+   *
+   * Локальный OSRM был подготовлен
+   * с профилем без платных дорог,
+   * поэтому там это работало.
+   *
+   * Публичный router.project-osrm.org
+   * может не поддерживать exclude=toll
+   * и возвращать HTTP 400.
+   */
+
+
+  const response =
+    await fetch(
+      url.toString(),
+      {
+        method:
+          'GET',
+
+        cache:
+          'no-store',
+      }
+    );
+
+
+  /*
+   * Если OSRM вернул ошибку,
+   * записываем в Vercel Logs
+   * не только HTTP-код,
+   * но и ответ сервера.
+   */
   if (!response.ok) {
+    const errorText =
+      await response.text();
+
     throw new Error(
-      `OSRM: сервер маршрутизации вернул ${response.status}`
+      `OSRM: сервер маршрутизации вернул ${response.status}. ${errorText}`
     );
   }
 
-  const data = await response.json();
+
+  const data =
+    await response.json();
+
 
   if (
-    data.code !== 'Ok' ||
-    !data.routes?.length
+    data.code !==
+      'Ok' ||
+    !data.routes
+      ?.length
   ) {
     throw new Error(
       data.message ||
@@ -244,24 +436,42 @@ export async function buildDrivingRoute(
     );
   }
 
-  const bestRoute = data.routes[0];
+
+  const bestRoute =
+    data.routes[0];
+
 
   const coordinates =
-    bestRoute.geometry?.coordinates as Coordinate[];
+    bestRoute
+      .geometry
+      ?.coordinates as
+      Coordinate[];
+
 
   if (
-    !Array.isArray(coordinates) ||
-    coordinates.length < 2
+    !Array.isArray(
+      coordinates
+    ) ||
+    coordinates.length <
+      2
   ) {
     throw new Error(
       'OSRM не вернул геометрию маршрута'
     );
   }
 
+
   return {
     coordinates,
+
     totalMeters:
-      Number(bestRoute.distance || 0),
-    status: 'OK',
+      Number(
+        bestRoute
+          .distance ||
+          0
+      ),
+
+    status:
+      'OK',
   };
 }
