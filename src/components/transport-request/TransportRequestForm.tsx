@@ -20,6 +20,7 @@ import {
   Send,
   Trash2,
   UploadCloud,
+  X,
 } from 'lucide-react';
 
 import styles
@@ -409,6 +410,15 @@ export default function TransportRequestForm({
   ] =
     useState(
       ''
+    );
+
+
+  const [
+    showMissingFieldsModal,
+    setShowMissingFieldsModal,
+  ] =
+    useState(
+      false
     );
 
 
@@ -886,6 +896,10 @@ export default function TransportRequestForm({
 
 
     if (firstError) {
+      setShowMissingFieldsModal(
+        true
+      );
+
       window.setTimeout(
         () => {
           const element =
@@ -944,6 +958,10 @@ export default function TransportRequestForm({
     if (
       !invoiceFile
     ) {
+      setShowMissingFieldsModal(
+        true
+      );
+
       return;
     }
 
@@ -1087,9 +1105,6 @@ export default function TransportRequestForm({
       );
 
 
-      /*
-       * Honeypot.
-       */
       formData.set(
         'website',
         ''
@@ -1143,6 +1158,17 @@ export default function TransportRequestForm({
           setFieldErrors(
             result.fieldErrors
           );
+
+          if (
+            Object.keys(
+              result.fieldErrors
+            ).length >
+            0
+          ) {
+            setShowMissingFieldsModal(
+              true
+            );
+          }
         }
 
 
@@ -1319,6 +1345,10 @@ export default function TransportRequestForm({
               setServerError(
                 ''
               );
+
+              setShowMissingFieldsModal(
+                false
+              );
             }
           }
         >
@@ -1337,237 +1367,322 @@ export default function TransportRequestForm({
 
 
   return (
-    <form
-      className={
-        styles.form
-      }
-      onSubmit={
-        handleSubmit
-      }
-      noValidate
-    >
+    <>
+      {showMissingFieldsModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Не все поля заполнены"
+          onClick={
+            () =>
+              setShowMissingFieldsModal(
+                false
+              )
+          }
+          style={{
+            position:
+              'fixed',
 
-      {/*
-       * =====================================
-       * 1. ОБЩАЯ ИНФОРМАЦИЯ
-       * =====================================
-       */}
-      <section
+            inset:
+              0,
+
+            zIndex:
+              99999,
+
+            display:
+              'flex',
+
+            alignItems:
+              'center',
+
+            justifyContent:
+              'center',
+
+            padding:
+              20,
+
+            background:
+              'rgba(35, 29, 26, 0.42)',
+
+            backdropFilter:
+              'blur(3px)',
+          }}
+        >
+          <div
+            onClick={
+              (
+                event
+              ) =>
+                event
+                  .stopPropagation()
+            }
+            style={{
+              position:
+                'relative',
+
+              width:
+                'min(92vw, 460px)',
+
+              padding:
+                '34px 30px 28px',
+
+              border:
+                '1px solid #e1d7d1',
+
+              borderRadius:
+                18,
+
+              background:
+                '#ffffff',
+
+              boxShadow:
+                '0 24px 70px rgba(50, 38, 31, 0.24)',
+
+              textAlign:
+                'center',
+            }}
+          >
+            <button
+              type="button"
+              aria-label="Закрыть уведомление"
+              onClick={
+                () =>
+                  setShowMissingFieldsModal(
+                    false
+                  )
+              }
+              style={{
+                position:
+                  'absolute',
+
+                top:
+                  12,
+
+                right:
+                  12,
+
+                display:
+                  'flex',
+
+                width:
+                  34,
+
+                height:
+                  34,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                border:
+                  '1px solid #e4dcd7',
+
+                borderRadius:
+                  9,
+
+                background:
+                  '#faf8f6',
+
+                color:
+                  '#74665e',
+
+                cursor:
+                  'pointer',
+              }}
+            >
+              <X
+                size={
+                  17
+                }
+              />
+            </button>
+
+
+            <div
+              style={{
+                display:
+                  'flex',
+
+                width:
+                  52,
+
+                height:
+                  52,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                margin:
+                  '0 auto 18px',
+
+                borderRadius:
+                  16,
+
+                background:
+                  '#756055',
+
+                color:
+                  '#ffffff',
+
+                fontSize:
+                  26,
+
+                fontWeight:
+                  800,
+              }}
+            >
+              !
+            </div>
+
+
+            <div
+              style={{
+                marginBottom:
+                  9,
+
+                color:
+                  '#2d2825',
+
+                fontSize:
+                  22,
+
+                fontWeight:
+                  800,
+
+                lineHeight:
+                  1.25,
+              }}
+            >
+              читай внимательно и заполняй все пункты
+            </div>
+
+
+            <div
+              style={{
+                marginBottom:
+                  22,
+
+                color:
+                  '#827872',
+
+                fontSize:
+                  12,
+
+                lineHeight:
+                  1.55,
+              }}
+            >
+              В заявке остались
+              незаполненные обязательные
+              поля. Они отмечены ниже.
+            </div>
+
+
+            <button
+              type="button"
+              onClick={
+                () =>
+                  setShowMissingFieldsModal(
+                    false
+                  )
+              }
+              style={{
+                minWidth:
+                  145,
+
+                minHeight:
+                  43,
+
+                padding:
+                  '0 20px',
+
+                border:
+                  0,
+
+                borderRadius:
+                  10,
+
+                background:
+                  '#756055',
+
+                color:
+                  '#ffffff',
+
+                fontFamily:
+                  'inherit',
+
+                fontSize:
+                  12,
+
+                fontWeight:
+                  750,
+
+                cursor:
+                  'pointer',
+              }}
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      <form
         className={
-          styles.card
+          styles.form
         }
+        onSubmit={
+          handleSubmit
+        }
+        noValidate
       >
 
-        <div
+        <section
           className={
-            styles.sectionHeader
+            styles.card
           }
         >
 
           <div
             className={
-              styles.sectionNumber
+              styles.sectionHeader
             }
           >
-            1
-          </div>
-
-          <div>
-
-            <h2
-              className={
-                styles.sectionTitle
-              }
-            >
-              Общая информация
-            </h2>
-
-            <p
-              className={
-                styles.sectionDescription
-              }
-            >
-              Кто создаёт заявку
-              и когда требуется
-              транспорт.
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <div
-          className={
-            styles.twoColumns
-          }
-        >
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="managerEmail"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Почта менеджера
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="email"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .managerEmail
-                )
-              }
-              value={
-                values.managerEmail
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'managerEmail',
-                    event.target.value
-                  )
-              }
-              placeholder="manager@company.ru"
-              autoComplete="email"
-            />
-
-            {fieldErrors.managerEmail && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .managerEmail
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="loadingDate"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Дата погрузки
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="date"
-              min={
-                today
-              }
-              className={
-                fieldClass(
-                  fieldErrors
-                    .loadingDate
-                )
-              }
-              value={
-                values.loadingDate
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'loadingDate',
-                    event.target.value
-                  )
-              }
-            />
-
-            {fieldErrors.loadingDate && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .loadingDate
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Желаемое время подачи машины
-            </label>
-
-            <input
-              type="time"
-              className={
-                styles.input
-              }
-              value={
-                values.desiredPickupTime
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'desiredPickupTime',
-                    event.target.value
-                  )
-              }
-            />
 
             <div
               className={
-                styles.hint
+                styles.sectionNumber
               }
             >
-              Необязательно.
-              Например, 09:00.
+              1
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                Общая информация
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                Кто создаёт заявку
+                и когда требуется
+                транспорт.
+              </p>
+
             </div>
 
           </div>
@@ -1575,147 +1690,485 @@ export default function TransportRequestForm({
 
           <div
             className={
-              styles.field
+              styles.twoColumns
             }
-            data-field="preferredVehicleTypeId"
           >
 
-            <label
+            <div
               className={
-                styles.label
+                styles.field
               }
+              data-field="managerEmail"
             >
-              Предпочтительный транспорт
-            </label>
 
-            <select
-              className={
-                fieldClass(
-                  fieldErrors
-                    .preferredVehicleTypeId
-                )
-              }
-              value={
-                values
-                  .preferredVehicleTypeId
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'preferredVehicleTypeId',
-                    event.target.value
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Почта менеджера
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="email"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .managerEmail
                   )
-              }
-            >
+                }
+                value={
+                  values.managerEmail
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'managerEmail',
+                      event.target.value
+                    )
+                }
+                placeholder="manager@company.ru"
+                autoComplete="email"
+              />
 
-              <option value="">
-                Не выбрано / подобрать логисту
-              </option>
-
-              {vehicles.map(
-                (
-                  vehicle
-                ) => (
-                  <option
-                    key={
-                      vehicle.id
-                    }
-                    value={
-                      vehicle.id
-                    }
-                  >
-                    {
-                      vehicle.name
-                    }
-                  </option>
-                )
+              {fieldErrors.managerEmail && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .managerEmail
+                  }
+                </div>
               )}
 
-            </select>
+            </div>
 
-            {fieldErrors.preferredVehicleTypeId && (
-              <div
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingDate"
+            >
+
+              <label
                 className={
-                  styles.errorText
+                  styles.label
                 }
               >
-                {
-                  fieldErrors
+                Дата погрузки
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="date"
+                min={
+                  today
+                }
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingDate
+                  )
+                }
+                value={
+                  values.loadingDate
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingDate',
+                      event.target.value
+                    )
+                }
+              />
+
+              {fieldErrors.loadingDate && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingDate
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Желаемое время подачи машины
+              </label>
+
+              <input
+                type="time"
+                className={
+                  styles.input
+                }
+                value={
+                  values.desiredPickupTime
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'desiredPickupTime',
+                      event.target.value
+                    )
+                }
+              />
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                Необязательно.
+                Например, 09:00.
+              </div>
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="preferredVehicleTypeId"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Предпочтительный транспорт
+              </label>
+
+              <select
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .preferredVehicleTypeId
+                  )
+                }
+                value={
+                  values
                     .preferredVehicleTypeId
                 }
-              </div>
-            )}
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'preferredVehicleTypeId',
+                      event.target.value
+                    )
+                }
+              >
+
+                <option value="">
+                  Не выбрано / подобрать логисту
+                </option>
+
+                {vehicles.map(
+                  (
+                    vehicle
+                  ) => (
+                    <option
+                      key={
+                        vehicle.id
+                      }
+                      value={
+                        vehicle.id
+                      }
+                    >
+                      {
+                        vehicle.name
+                      }
+                    </option>
+                  )
+                )}
+
+              </select>
+
+              {fieldErrors.preferredVehicleTypeId && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .preferredVehicleTypeId
+                  }
+                </div>
+              )}
+
+            </div>
 
           </div>
 
-        </div>
-
-      </section>
+        </section>
 
 
-      {/*
-       * =====================================
-       * 2. ПАРАМЕТРЫ ГРУЗА
-       * =====================================
-       */}
-      <section
-        className={
-          styles.card
-        }
-      >
-
-        <div
+        <section
           className={
-            styles.sectionHeader
+            styles.card
           }
         >
 
           <div
             className={
-              styles.sectionNumber
+              styles.sectionHeader
             }
           >
-            2
-          </div>
 
-          <div>
-
-            <h2
+            <div
               className={
-                styles.sectionTitle
+                styles.sectionNumber
               }
             >
-              Параметры груза
-            </h2>
+              2
+            </div>
 
-            <p
-              className={
-                styles.sectionDescription
-              }
-            >
-              Основные параметры
-              для выбора подходящей
-              машины.
-            </p>
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                Параметры груза
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                Основные параметры
+                для выбора подходящей
+                машины.
+              </p>
+
+            </div>
 
           </div>
 
-        </div>
+
+          <div
+            className={
+              styles.twoColumns
+            }
+          >
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="totalWeight"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Общий тоннаж
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <div
+                className={
+                  styles.inputWithUnit
+                }
+              >
+
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={
+                    fieldClass(
+                      fieldErrors
+                        .totalWeight
+                    )
+                  }
+                  value={
+                    values.totalWeight
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      updateValue(
+                        'totalWeight',
+                        event.target.value
+                      )
+                  }
+                  placeholder="12,5"
+                />
+
+                <span
+                  className={
+                    styles.unit
+                  }
+                >
+                  т
+                </span>
+
+              </div>
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                Можно вводить
+                1,5 или 1.5.
+              </div>
+
+              {fieldErrors.totalWeight && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .totalWeight
+                  }
+                </div>
+              )}
+
+            </div>
 
 
-        <div
-          className={
-            styles.twoColumns
-          }
-        >
+            <div
+              className={
+                styles.field
+              }
+              data-field="cargoLength"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Максимальная длина груза
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <div
+                className={
+                  styles.inputWithUnit
+                }
+              >
+
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={
+                    fieldClass(
+                      fieldErrors
+                        .cargoLength
+                    )
+                  }
+                  value={
+                    values.cargoLength
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      updateValue(
+                        'cargoLength',
+                        event.target.value
+                      )
+                  }
+                  placeholder="11,7"
+                />
+
+                <span
+                  className={
+                    styles.unit
+                  }
+                >
+                  м
+                </span>
+
+              </div>
+
+              {fieldErrors.cargoLength && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .cargoLength
+                  }
+                </div>
+              )}
+
+            </div>
+
+          </div>
+
 
           <div
             className={
               styles.field
             }
-            data-field="totalWeight"
+            data-field="needsStakes"
           >
 
             <label
@@ -1723,7 +2176,7 @@ export default function TransportRequestForm({
                 styles.label
               }
             >
-              Общий тоннаж
+              Нужны ли коники?
               <span
                 className={
                   styles.required
@@ -1735,41 +2188,47 @@ export default function TransportRequestForm({
 
             <div
               className={
-                styles.inputWithUnit
+                styles.segmented
               }
             >
 
-              <input
-                type="text"
-                inputMode="decimal"
+              <button
+                type="button"
                 className={
-                  fieldClass(
-                    fieldErrors
-                      .totalWeight
-                  )
+                  values.needsStakes ===
+                  'yes'
+                    ? `${styles.segmentButton} ${styles.segmentButtonActive}`
+                    : styles.segmentButton
                 }
-                value={
-                  values.totalWeight
-                }
-                onChange={
-                  (
-                    event
-                  ) =>
+                onClick={
+                  () =>
                     updateValue(
-                      'totalWeight',
-                      event.target.value
+                      'needsStakes',
+                      'yes'
                     )
                 }
-                placeholder="12,5"
-              />
+              >
+                Да
+              </button>
 
-              <span
+              <button
+                type="button"
                 className={
-                  styles.unit
+                  values.needsStakes ===
+                  'no'
+                    ? `${styles.segmentButton} ${styles.segmentButtonActive}`
+                    : styles.segmentButton
+                }
+                onClick={
+                  () =>
+                    updateValue(
+                      'needsStakes',
+                      'no'
+                    )
                 }
               >
-                т
-              </span>
+                Нет
+              </button>
 
             </div>
 
@@ -1778,11 +2237,12 @@ export default function TransportRequestForm({
                 styles.hint
               }
             >
-              Можно вводить
-              1,5 или 1.5.
+              Укажите, требуется ли
+              перевозка груза с
+              использованием коников.
             </div>
 
-            {fieldErrors.totalWeight && (
+            {fieldErrors.needsStakes && (
               <div
                 className={
                   styles.errorText
@@ -1790,262 +2250,1171 @@ export default function TransportRequestForm({
               >
                 {
                   fieldErrors
-                    .totalWeight
+                    .needsStakes
                 }
               </div>
             )}
 
           </div>
 
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="cargoLength"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Максимальная длина груза
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <div
-              className={
-                styles.inputWithUnit
-              }
-            >
-
-              <input
-                type="text"
-                inputMode="decimal"
-                className={
-                  fieldClass(
-                    fieldErrors
-                      .cargoLength
-                  )
-                }
-                value={
-                  values.cargoLength
-                }
-                onChange={
-                  (
-                    event
-                  ) =>
-                    updateValue(
-                      'cargoLength',
-                      event.target.value
-                    )
-                }
-                placeholder="11,7"
-              />
-
-              <span
-                className={
-                  styles.unit
-                }
-              >
-                м
-              </span>
-
-            </div>
-
-            {fieldErrors.cargoLength && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .cargoLength
-                }
-              </div>
-            )}
-
-          </div>
-
-        </div>
-
-
-        <div
-          className={
-            styles.field
-          }
-          data-field="needsStakes"
-        >
 
           <label
             className={
-              styles.label
+              styles.checkCard
             }
           >
-            Нужны ли коники?
+
+            <input
+              type="checkbox"
+              checked={
+                values
+                  .logisticsFitCheck
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  updateValue(
+                    'logisticsFitCheck',
+                    event.target.checked
+                  )
+              }
+            />
+
             <span
               className={
-                styles.required
+                styles.customCheckbox
               }
             >
-              *
+              {values.logisticsFitCheck && (
+                <Check
+                  size={
+                    15
+                  }
+                />
+              )}
             </span>
+
+            <span>
+
+              <strong>
+                Уточнить у логиста,
+                поместится ли весь груз
+                в одну машину
+              </strong>
+
+              <small>
+                Поставьте галочку,
+                если перед отправкой
+                машины логист должен
+                проверить вместимость
+                всего груза.
+              </small>
+
+            </span>
+
           </label>
 
-          <div
+        </section>
+
+
+        <div
+          className={
+            styles.locationGrid
+          }
+        >
+
+          <section
             className={
-              styles.segmented
+              styles.card
             }
           >
 
-            <button
-              type="button"
-              className={
-                values.needsStakes ===
-                'yes'
-                  ? `${styles.segmentButton} ${styles.segmentButtonActive}`
-                  : styles.segmentButton
-              }
-              onClick={
-                () =>
-                  updateValue(
-                    'needsStakes',
-                    'yes'
-                  )
-              }
-            >
-              Да
-            </button>
-
-            <button
-              type="button"
-              className={
-                values.needsStakes ===
-                'no'
-                  ? `${styles.segmentButton} ${styles.segmentButtonActive}`
-                  : styles.segmentButton
-              }
-              onClick={
-                () =>
-                  updateValue(
-                    'needsStakes',
-                    'no'
-                  )
-              }
-            >
-              Нет
-            </button>
-
-          </div>
-
-          <div
-            className={
-              styles.hint
-            }
-          >
-            Укажите, требуется ли
-            перевозка груза с
-            использованием коников.
-          </div>
-
-          {fieldErrors.needsStakes && (
             <div
               className={
-                styles.errorText
+                styles.sectionHeader
               }
             >
-              {
-                fieldErrors
-                  .needsStakes
-              }
+
+              <div
+                className={
+                  styles.sectionNumber
+                }
+              >
+                3
+              </div>
+
+              <div>
+
+                <h2
+                  className={
+                    styles.sectionTitle
+                  }
+                >
+                  Погрузка
+                </h2>
+
+                <p
+                  className={
+                    styles.sectionDescription
+                  }
+                >
+                  Где забрать груз
+                  и с кем связаться
+                  на месте.
+                </p>
+
+              </div>
+
             </div>
-          )}
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingAddress"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Точный адрес погрузки
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingAddress
+                  )
+                }
+                value={
+                  values.loadingAddress
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingAddress',
+                      event.target.value
+                    )
+                }
+                placeholder="Московская область, Балашиха, ..."
+              />
+
+            </div>
+
+
+            <div
+              className={
+                styles.orDivider
+              }
+            >
+              или
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingMapUrl"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Ссылка на Яндекс Карты — погрузка
+              </label>
+
+              <input
+                type="url"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingMapUrl
+                  )
+                }
+                value={
+                  values.loadingMapUrl
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingMapUrl',
+                      event.target.value
+                    )
+                }
+                placeholder="https://yandex.ru/maps/..."
+              />
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                Укажите точный адрес
+                или вставьте ссылку
+                на точку в Яндекс Картах.
+              </div>
+
+              {(fieldErrors.loadingAddress ||
+                fieldErrors.loadingMapUrl) && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingMapUrl ||
+                    fieldErrors
+                      .loadingAddress
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.divider
+              }
+            />
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingContactName"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Имя контактного лица
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingContactName
+                  )
+                }
+                value={
+                  values
+                    .loadingContactName
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingContactName',
+                      event.target.value
+                    )
+                }
+                placeholder="Иван"
+              />
+
+              {fieldErrors.loadingContactName && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingContactName
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingContactPhone"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Телефон
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="tel"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingContactPhone
+                  )
+                }
+                value={
+                  values
+                    .loadingContactPhone
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingContactPhone',
+                      event.target.value
+                    )
+                }
+                placeholder="+7 999 123-45-67"
+              />
+
+              {fieldErrors.loadingContactPhone && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingContactPhone
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingUntil"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                До скольки работает погрузка?
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="time"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingUntil
+                  )
+                }
+                value={
+                  values.loadingUntil
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingUntil',
+                      event.target.value
+                    )
+                }
+              />
+
+              {fieldErrors.loadingUntil && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingUntil
+                  }
+                </div>
+              )}
+
+            </div>
+
+          </section>
+
+
+          <section
+            className={
+              styles.card
+            }
+          >
+
+            <div
+              className={
+                styles.sectionHeader
+              }
+            >
+
+              <div
+                className={
+                  styles.sectionNumber
+                }
+              >
+                4
+              </div>
+
+              <div>
+
+                <h2
+                  className={
+                    styles.sectionTitle
+                  }
+                >
+                  Выгрузка
+                </h2>
+
+                <p
+                  className={
+                    styles.sectionDescription
+                  }
+                >
+                  Куда доставить груз
+                  и кто принимает
+                  на объекте.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingAddress"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Точный адрес выгрузки
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingAddress
+                  )
+                }
+                value={
+                  values
+                    .unloadingAddress
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingAddress',
+                      event.target.value
+                    )
+                }
+                placeholder="Москва, ..."
+              />
+
+            </div>
+
+
+            <div
+              className={
+                styles.orDivider
+              }
+            >
+              или
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingMapUrl"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Ссылка на Яндекс Карты — выгрузка
+              </label>
+
+              <input
+                type="url"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingMapUrl
+                  )
+                }
+                value={
+                  values
+                    .unloadingMapUrl
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingMapUrl',
+                      event.target.value
+                    )
+                }
+                placeholder="https://yandex.ru/maps/..."
+              />
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                Укажите точный адрес
+                или вставьте ссылку
+                на точку в Яндекс Картах.
+              </div>
+
+              {(fieldErrors.unloadingAddress ||
+                fieldErrors.unloadingMapUrl) && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingMapUrl ||
+                    fieldErrors
+                      .unloadingAddress
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.divider
+              }
+            />
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingContactName"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Имя контактного лица
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingContactName
+                  )
+                }
+                value={
+                  values
+                    .unloadingContactName
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingContactName',
+                      event.target.value
+                    )
+                }
+                placeholder="Сергей"
+              />
+
+              {fieldErrors.unloadingContactName && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingContactName
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingContactPhone"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Телефон
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="tel"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingContactPhone
+                  )
+                }
+                value={
+                  values
+                    .unloadingContactPhone
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingContactPhone',
+                      event.target.value
+                    )
+                }
+                placeholder="+7 999 123-45-67"
+              />
+
+              {fieldErrors.unloadingContactPhone && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingContactPhone
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingUntil"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                До скольки принимают на объекте?
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="time"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingUntil
+                  )
+                }
+                value={
+                  values
+                    .unloadingUntil
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingUntil',
+                      event.target.value
+                    )
+                }
+              />
+
+              {fieldErrors.unloadingUntil && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingUntil
+                  }
+                </div>
+              )}
+
+            </div>
+
+          </section>
 
         </div>
 
 
-        <label
+        <section
           className={
-            styles.checkCard
+            styles.card
           }
         >
 
-          <input
-            type="checkbox"
-            checked={
-              values
-                .logisticsFitCheck
+          <div
+            className={
+              styles.sectionHeader
+            }
+          >
+
+            <div
+              className={
+                styles.sectionNumber
+              }
+            >
+              5
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                Счёт на погрузку
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                Прикрепите фотографию,
+                скриншот или PDF счёта.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div
+            data-field="invoiceFile"
+          >
+
+            {!invoiceFile ? (
+              <div
+                className={
+                  isDragging
+                    ? `${styles.dropZone} ${styles.dropZoneActive}`
+                    : fieldErrors.invoiceFile
+                      ? `${styles.dropZone} ${styles.dropZoneError}`
+                      : styles.dropZone
+                }
+                onDragOver={
+                  (
+                    event
+                  ) => {
+                    event.preventDefault();
+
+                    setIsDragging(
+                      true
+                    );
+                  }
+                }
+                onDragLeave={
+                  () =>
+                    setIsDragging(
+                      false
+                    )
+                }
+                onDrop={
+                  handleDrop
+                }
+                onClick={
+                  () =>
+                    fileInputRef
+                      .current
+                      ?.click()
+                }
+                role="button"
+                tabIndex={
+                  0
+                }
+                onKeyDown={
+                  (
+                    event
+                  ) => {
+                    if (
+                      event.key ===
+                        'Enter' ||
+                      event.key ===
+                        ' '
+                    ) {
+                      fileInputRef
+                        .current
+                        ?.click();
+                    }
+                  }
+                }
+              >
+
+                <UploadCloud
+                  size={
+                    32
+                  }
+                />
+
+                <strong>
+                  Перетащите счёт сюда
+                  или нажмите для выбора файла
+                </strong>
+
+                <span>
+                  PDF, JPG, JPEG, PNG или WEBP
+                </span>
+
+                <small>
+                  Максимальный размер
+                  в текущей версии — 4 МБ
+                </small>
+
+              </div>
+            ) : (
+              <div
+                className={
+                  styles.fileCard
+                }
+              >
+
+                <div
+                  className={
+                    styles.filePreview
+                  }
+                >
+
+                  {previewUrl ? (
+                    <img
+                      src={
+                        previewUrl
+                      }
+                      alt="Предпросмотр счёта"
+                    />
+                  ) : (
+                    <FileText
+                      size={
+                        36
+                      }
+                    />
+                  )}
+
+                </div>
+
+
+                <div
+                  className={
+                    styles.fileInfo
+                  }
+                >
+
+                  <div
+                    className={
+                      styles.fileName
+                    }
+                  >
+                    {
+                      invoiceFile.name
+                    }
+                  </div>
+
+                  <div
+                    className={
+                      styles.fileMeta
+                    }
+                  >
+
+                    {invoiceFile.type.startsWith(
+                      'image/'
+                    ) ? (
+                      <ImageIcon
+                        size={
+                          14
+                        }
+                      />
+                    ) : (
+                      <FileText
+                        size={
+                          14
+                        }
+                      />
+                    )}
+
+                    <span>
+                      {
+                        invoiceFile.type ||
+                        'Файл'
+                      }
+                    </span>
+
+                    <span>
+                      ·
+                    </span>
+
+                    <span>
+                      {
+                        formatFileSize(
+                          invoiceFile.size
+                        )
+                      }
+                    </span>
+
+                  </div>
+
+                </div>
+
+
+                <div
+                  className={
+                    styles.fileActions
+                  }
+                >
+
+                  <button
+                    type="button"
+                    className={
+                      styles.smallButton
+                    }
+                    onClick={
+                      () =>
+                        fileInputRef
+                          .current
+                          ?.click()
+                    }
+                  >
+                    <Paperclip
+                      size={
+                        15
+                      }
+                    />
+
+                    Заменить
+                  </button>
+
+
+                  <button
+                    type="button"
+                    className={
+                      styles.deleteButton
+                    }
+                    onClick={
+                      removeFile
+                    }
+                  >
+                    <Trash2
+                      size={
+                        15
+                      }
+                    />
+
+                    Удалить
+                  </button>
+
+                </div>
+
+              </div>
+            )}
+
+
+            <input
+              ref={
+                fileInputRef
+              }
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+              onChange={
+                handleFileInput
+              }
+              className={
+                styles.hiddenFileInput
+              }
+            />
+
+
+            {fieldErrors.invoiceFile && (
+              <div
+                className={
+                  styles.errorText
+                }
+              >
+                {
+                  fieldErrors
+                    .invoiceFile
+                }
+              </div>
+            )}
+
+          </div>
+
+        </section>
+
+
+        <section
+          className={
+            styles.card
+          }
+        >
+
+          <div
+            className={
+              styles.sectionHeader
+            }
+          >
+
+            <div
+              className={
+                styles.sectionNumber
+              }
+            >
+              6
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                Комментарий к заявке
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                Необязательная
+                дополнительная информация.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <textarea
+            className={
+              styles.textarea
+            }
+            value={
+              values.comment
             }
             onChange={
               (
                 event
               ) =>
                 updateValue(
-                  'logisticsFitCheck',
-                  event.target.checked
+                  'comment',
+                  event.target.value
                 )
+            }
+            placeholder="Дополнительная информация для логиста или водителя"
+            rows={
+              5
             }
           />
 
-          <span
-            className={
-              styles.customCheckbox
-            }
-          >
-            {values.logisticsFitCheck && (
-              <Check
-                size={
-                  15
-                }
-              />
-            )}
-          </span>
-
-          <span>
-
-            <strong>
-              Уточнить у логиста,
-              поместится ли весь груз
-              в одну машину
-            </strong>
-
-            <small>
-              Поставьте галочку,
-              если перед отправкой
-              машины логист должен
-              проверить вместимость
-              всего груза.
-            </small>
-
-          </span>
-
-        </label>
-
-      </section>
+        </section>
 
 
-      <div
-        className={
-          styles.locationGrid
-        }
-      >
-
-        {/*
-         * ===================================
-         * 3. ПОГРУЗКА
-         * ===================================
-         */}
         <section
           className={
-            styles.card
+            `${styles.card} ${styles.reviewCard}`
           }
         >
 
@@ -2060,7 +3429,7 @@ export default function TransportRequestForm({
                 styles.sectionNumber
               }
             >
-              3
+              7
             </div>
 
             <div>
@@ -2070,7 +3439,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Погрузка
+                Проверьте заявку
               </h2>
 
               <p
@@ -2078,9 +3447,8 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Где забрать груз
-                и с кем связаться
-                на месте.
+                Короткая проверка
+                перед отправкой.
               </p>
 
             </div>
@@ -2090,1387 +3458,277 @@ export default function TransportRequestForm({
 
           <div
             className={
-              styles.field
-            }
-            data-field="loadingAddress"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Точный адрес погрузки
-            </label>
-
-            <input
-              type="text"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .loadingAddress
-                )
-              }
-              value={
-                values.loadingAddress
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'loadingAddress',
-                    event.target.value
-                  )
-              }
-              placeholder="Московская область, Балашиха, ..."
-            />
-
-          </div>
-
-
-          <div
-            className={
-              styles.orDivider
-            }
-          >
-            или
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="loadingMapUrl"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Ссылка на Яндекс Карты — погрузка
-            </label>
-
-            <input
-              type="url"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .loadingMapUrl
-                )
-              }
-              value={
-                values.loadingMapUrl
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'loadingMapUrl',
-                    event.target.value
-                  )
-              }
-              placeholder="https://yandex.ru/maps/..."
-            />
-
-            <div
-              className={
-                styles.hint
-              }
-            >
-              Укажите точный адрес
-              или вставьте ссылку
-              на точку в Яндекс Картах.
-            </div>
-
-            {(fieldErrors.loadingAddress ||
-              fieldErrors.loadingMapUrl) && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .loadingMapUrl ||
-                  fieldErrors
-                    .loadingAddress
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.divider
-            }
-          />
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="loadingContactName"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Имя контактного лица
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="text"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .loadingContactName
-                )
-              }
-              value={
-                values
-                  .loadingContactName
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'loadingContactName',
-                    event.target.value
-                  )
-              }
-              placeholder="Иван"
-            />
-
-            {fieldErrors.loadingContactName && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .loadingContactName
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="loadingContactPhone"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Телефон
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="tel"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .loadingContactPhone
-                )
-              }
-              value={
-                values
-                  .loadingContactPhone
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'loadingContactPhone',
-                    event.target.value
-                  )
-              }
-              placeholder="+7 999 123-45-67"
-            />
-
-            {fieldErrors.loadingContactPhone && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .loadingContactPhone
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="loadingUntil"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              До скольки работает погрузка?
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="time"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .loadingUntil
-                )
-              }
-              value={
-                values.loadingUntil
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'loadingUntil',
-                    event.target.value
-                  )
-              }
-            />
-
-            {fieldErrors.loadingUntil && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .loadingUntil
-                }
-              </div>
-            )}
-
-          </div>
-
-        </section>
-
-
-        {/*
-         * ===================================
-         * 4. ВЫГРУЗКА
-         * ===================================
-         */}
-        <section
-          className={
-            styles.card
-          }
-        >
-
-          <div
-            className={
-              styles.sectionHeader
+              styles.reviewGrid
             }
           >
 
             <div
               className={
-                styles.sectionNumber
+                styles.reviewItem
               }
             >
-              4
-            </div>
-
-            <div>
-
-              <h2
-                className={
-                  styles.sectionTitle
-                }
-              >
-                Выгрузка
-              </h2>
-
-              <p
-                className={
-                  styles.sectionDescription
-                }
-              >
-                Куда доставить груз
-                и кто принимает
-                на объекте.
-              </p>
-
-            </div>
-
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="unloadingAddress"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Точный адрес выгрузки
-            </label>
-
-            <input
-              type="text"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .unloadingAddress
-                )
-              }
-              value={
-                values
-                  .unloadingAddress
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'unloadingAddress',
-                    event.target.value
-                  )
-              }
-              placeholder="Москва, ..."
-            />
-
-          </div>
-
-
-          <div
-            className={
-              styles.orDivider
-            }
-          >
-            или
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="unloadingMapUrl"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Ссылка на Яндекс Карты — выгрузка
-            </label>
-
-            <input
-              type="url"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .unloadingMapUrl
-                )
-              }
-              value={
-                values
-                  .unloadingMapUrl
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'unloadingMapUrl',
-                    event.target.value
-                  )
-              }
-              placeholder="https://yandex.ru/maps/..."
-            />
-
-            <div
-              className={
-                styles.hint
-              }
-            >
-              Укажите точный адрес
-              или вставьте ссылку
-              на точку в Яндекс Картах.
-            </div>
-
-            {(fieldErrors.unloadingAddress ||
-              fieldErrors.unloadingMapUrl) && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .unloadingMapUrl ||
-                  fieldErrors
-                    .unloadingAddress
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.divider
-            }
-          />
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="unloadingContactName"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Имя контактного лица
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
+              <span>
+                Менеджер
               </span>
-            </label>
-
-            <input
-              type="text"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .unloadingContactName
-                )
-              }
-              value={
-                values
-                  .unloadingContactName
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'unloadingContactName',
-                    event.target.value
-                  )
-              }
-              placeholder="Сергей"
-            />
-
-            {fieldErrors.unloadingContactName && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .unloadingContactName
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="unloadingContactPhone"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              Телефон
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="tel"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .unloadingContactPhone
-                )
-              }
-              value={
-                values
-                  .unloadingContactPhone
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'unloadingContactPhone',
-                    event.target.value
-                  )
-              }
-              placeholder="+7 999 123-45-67"
-            />
-
-            {fieldErrors.unloadingContactPhone && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .unloadingContactPhone
-                }
-              </div>
-            )}
-
-          </div>
-
-
-          <div
-            className={
-              styles.field
-            }
-            data-field="unloadingUntil"
-          >
-
-            <label
-              className={
-                styles.label
-              }
-            >
-              До скольки принимают на объекте?
-              <span
-                className={
-                  styles.required
-                }
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="time"
-              className={
-                fieldClass(
-                  fieldErrors
-                    .unloadingUntil
-                )
-              }
-              value={
-                values
-                  .unloadingUntil
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  updateValue(
-                    'unloadingUntil',
-                    event.target.value
-                  )
-              }
-            />
-
-            {fieldErrors.unloadingUntil && (
-              <div
-                className={
-                  styles.errorText
-                }
-              >
-                {
-                  fieldErrors
-                    .unloadingUntil
-                }
-              </div>
-            )}
-
-          </div>
-
-        </section>
-
-      </div>
-
-
-      {/*
-       * =====================================
-       * 5. СЧЁТ
-       * =====================================
-       */}
-      <section
-        className={
-          styles.card
-        }
-      >
-
-        <div
-          className={
-            styles.sectionHeader
-          }
-        >
-
-          <div
-            className={
-              styles.sectionNumber
-            }
-          >
-            5
-          </div>
-
-          <div>
-
-            <h2
-              className={
-                styles.sectionTitle
-              }
-            >
-              Счёт на погрузку
-            </h2>
-
-            <p
-              className={
-                styles.sectionDescription
-              }
-            >
-              Прикрепите фотографию,
-              скриншот или PDF счёта.
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <div
-          data-field="invoiceFile"
-        >
-
-          {!invoiceFile ? (
-            <div
-              className={
-                isDragging
-                  ? `${styles.dropZone} ${styles.dropZoneActive}`
-                  : fieldErrors.invoiceFile
-                    ? `${styles.dropZone} ${styles.dropZoneError}`
-                    : styles.dropZone
-              }
-              onDragOver={
-                (
-                  event
-                ) => {
-                  event.preventDefault();
-
-                  setIsDragging(
-                    true
-                  );
-                }
-              }
-              onDragLeave={
-                () =>
-                  setIsDragging(
-                    false
-                  )
-              }
-              onDrop={
-                handleDrop
-              }
-              onClick={
-                () =>
-                  fileInputRef
-                    .current
-                    ?.click()
-              }
-              role="button"
-              tabIndex={
-                0
-              }
-              onKeyDown={
-                (
-                  event
-                ) => {
-                  if (
-                    event.key ===
-                      'Enter' ||
-                    event.key ===
-                      ' '
-                  ) {
-                    fileInputRef
-                      .current
-                      ?.click();
-                  }
-                }
-              }
-            >
-
-              <UploadCloud
-                size={
-                  32
-                }
-              />
 
               <strong>
-                Перетащите счёт сюда
-                или нажмите для выбора файла
+                {
+                  values.managerEmail ||
+                  '—'
+                }
               </strong>
+            </div>
 
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
               <span>
-                PDF, JPG, JPEG, PNG или WEBP
+                Дата погрузки
               </span>
 
-              <small>
-                Максимальный размер
-                в текущей версии — 4 МБ
-              </small>
-
+              <strong>
+                {
+                  values.loadingDate ||
+                  '—'
+                }
+              </strong>
             </div>
-          ) : (
+
+
             <div
               className={
-                styles.fileCard
+                styles.reviewItem
               }
             >
+              <span>
+                Транспорт
+              </span>
 
-              <div
-                className={
-                  styles.filePreview
+              <strong>
+                {
+                  selectedVehicleName
                 }
-              >
-
-                {previewUrl ? (
-                  <img
-                    src={
-                      previewUrl
-                    }
-                    alt="Предпросмотр счёта"
-                  />
-                ) : (
-                  <FileText
-                    size={
-                      36
-                    }
-                  />
-                )}
-
-              </div>
-
-
-              <div
-                className={
-                  styles.fileInfo
-                }
-              >
-
-                <div
-                  className={
-                    styles.fileName
-                  }
-                >
-                  {
-                    invoiceFile.name
-                  }
-                </div>
-
-                <div
-                  className={
-                    styles.fileMeta
-                  }
-                >
-
-                  {invoiceFile.type.startsWith(
-                    'image/'
-                  ) ? (
-                    <ImageIcon
-                      size={
-                        14
-                      }
-                    />
-                  ) : (
-                    <FileText
-                      size={
-                        14
-                      }
-                    />
-                  )}
-
-                  <span>
-                    {
-                      invoiceFile.type ||
-                      'Файл'
-                    }
-                  </span>
-
-                  <span>
-                    ·
-                  </span>
-
-                  <span>
-                    {
-                      formatFileSize(
-                        invoiceFile.size
-                      )
-                    }
-                  </span>
-
-                </div>
-
-              </div>
-
-
-              <div
-                className={
-                  styles.fileActions
-                }
-              >
-
-                <button
-                  type="button"
-                  className={
-                    styles.smallButton
-                  }
-                  onClick={
-                    () =>
-                      fileInputRef
-                        .current
-                        ?.click()
-                  }
-                >
-                  <Paperclip
-                    size={
-                      15
-                    }
-                  />
-
-                  Заменить
-                </button>
-
-
-                <button
-                  type="button"
-                  className={
-                    styles.deleteButton
-                  }
-                  onClick={
-                    removeFile
-                  }
-                >
-                  <Trash2
-                    size={
-                      15
-                    }
-                  />
-
-                  Удалить
-                </button>
-
-              </div>
-
+              </strong>
             </div>
-          )}
 
 
-          <input
-            ref={
-              fileInputRef
-            }
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-            onChange={
-              handleFileInput
-            }
-            className={
-              styles.hiddenFileInput
-            }
-          />
-
-
-          {fieldErrors.invoiceFile && (
             <div
               className={
-                styles.errorText
+                styles.reviewItem
               }
             >
-              {
-                fieldErrors
-                  .invoiceFile
-              }
+              <span>
+                Груз
+              </span>
+
+              <strong>
+                {values.totalWeight ||
+                  '—'}{' '}
+                т /{' '}
+                {values.cargoLength ||
+                  '—'}{' '}
+                м
+              </strong>
             </div>
-          )}
-
-        </div>
-
-      </section>
 
 
-      {/*
-       * =====================================
-       * 6. КОММЕНТАРИЙ
-       * =====================================
-       */}
-      <section
-        className={
-          styles.card
-        }
-      >
-
-        <div
-          className={
-            styles.sectionHeader
-          }
-        >
-
-          <div
-            className={
-              styles.sectionNumber
-            }
-          >
-            6
-          </div>
-
-          <div>
-
-            <h2
+            <div
               className={
-                styles.sectionTitle
+                styles.reviewItem
               }
             >
-              Комментарий к заявке
-            </h2>
+              <span>
+                Коники
+              </span>
 
-            <p
-              className={
-                styles.sectionDescription
-              }
-            >
-              Необязательная
-              дополнительная информация.
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <textarea
-          className={
-            styles.textarea
-          }
-          value={
-            values.comment
-          }
-          onChange={
-            (
-              event
-            ) =>
-              updateValue(
-                'comment',
-                event.target.value
-              )
-          }
-          placeholder="Дополнительная информация для логиста или водителя"
-          rows={
-            5
-          }
-        />
-
-      </section>
-
-
-      {/*
-       * =====================================
-       * 7. ПРОВЕРКА
-       * =====================================
-       */}
-      <section
-        className={
-          `${styles.card} ${styles.reviewCard}`
-        }
-      >
-
-        <div
-          className={
-            styles.sectionHeader
-          }
-        >
-
-          <div
-            className={
-              styles.sectionNumber
-            }
-          >
-            7
-          </div>
-
-          <div>
-
-            <h2
-              className={
-                styles.sectionTitle
-              }
-            >
-              Проверьте заявку
-            </h2>
-
-            <p
-              className={
-                styles.sectionDescription
-              }
-            >
-              Короткая проверка
-              перед отправкой.
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <div
-          className={
-            styles.reviewGrid
-          }
-        >
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Менеджер
-            </span>
-
-            <strong>
-              {
-                values.managerEmail ||
-                '—'
-              }
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Дата погрузки
-            </span>
-
-            <strong>
-              {
-                values.loadingDate ||
-                '—'
-              }
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Транспорт
-            </span>
-
-            <strong>
-              {
-                selectedVehicleName
-              }
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Груз
-            </span>
-
-            <strong>
-              {values.totalWeight ||
-                '—'}{' '}
-              т /{' '}
-              {values.cargoLength ||
-                '—'}{' '}
-              м
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Коники
-            </span>
-
-            <strong>
-              {
-                values.needsStakes ===
-                'yes'
-                  ? 'Да'
-                  : values.needsStakes ===
-                    'no'
-                    ? 'Нет'
-                    : '—'
-              }
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Проверка логистом
-            </span>
-
-            <strong>
-              {
-                values
-                  .logisticsFitCheck
-                  ? 'Да'
-                  : 'Нет'
-              }
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Погрузка
-            </span>
-
-            <strong>
-              {
-                values.loadingAddress ||
-                values.loadingMapUrl ||
-                '—'
-              }
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Выгрузка
-            </span>
-
-            <strong>
-              {
-                values.unloadingAddress ||
-                values.unloadingMapUrl ||
-                '—'
-              }
-            </strong>
-          </div>
-
-
-          <div
-            className={
-              styles.reviewItem
-            }
-          >
-            <span>
-              Счёт
-            </span>
-
-            <strong>
-              {
-                invoiceFile
-                  ? invoiceFile.name
-                  : 'Не прикреплён'
-              }
-            </strong>
-          </div>
-
-        </div>
-
-      </section>
-
-
-      {serverError && (
-        <div
-          className={
-            styles.serverError
-          }
-        >
-          {serverError}
-        </div>
-      )}
-
-
-      <div
-        className={
-          styles.submitArea
-        }
-      >
-
-        <div
-          className={
-            styles.submitNote
-          }
-        >
-          После отправки данные
-          заявки и прикреплённый
-          счёт будут переданы
-          ответственному менеджеру.
-        </div>
-
-
-        <button
-          type="submit"
-          disabled={
-            submitting
-          }
-          className={
-            styles.submitButton
-          }
-        >
-
-          {submitting ? (
-            <>
-              <LoaderCircle
-                size={
-                  18
+              <strong>
+                {
+                  values.needsStakes ===
+                  'yes'
+                    ? 'Да'
+                    : values.needsStakes ===
+                      'no'
+                      ? 'Нет'
+                      : '—'
                 }
-                className={
-                  styles.spinner
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Проверка логистом
+              </span>
+
+              <strong>
+                {
+                  values
+                    .logisticsFitCheck
+                    ? 'Да'
+                    : 'Нет'
                 }
-              />
+              </strong>
+            </div>
 
-              Отправляем заявку…
-            </>
-          ) : (
-            <>
-              <Send
-                size={
-                  18
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Погрузка
+              </span>
+
+              <strong>
+                {
+                  values.loadingAddress ||
+                  values.loadingMapUrl ||
+                  '—'
                 }
-              />
-
-              Отправить заявку на транспорт
-            </>
-          )}
-
-        </button>
-
-      </div>
+              </strong>
+            </div>
 
 
-      {/*
-       * Скрытое поле против
-       * простых автоматических ботов.
-       */}
-      <div
-        className={
-          styles.honeypot
-        }
-        aria-hidden="true"
-      >
-        <label>
-          Website
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Выгрузка
+              </span>
 
-          <input
-            type="text"
-            name="website"
-            tabIndex={
-              -1
+              <strong>
+                {
+                  values.unloadingAddress ||
+                  values.unloadingMapUrl ||
+                  '—'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Счёт
+              </span>
+
+              <strong>
+                {
+                  invoiceFile
+                    ? invoiceFile.name
+                    : 'Не прикреплён'
+                }
+              </strong>
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {serverError && (
+          <div
+            className={
+              styles.serverError
             }
-            autoComplete="off"
-          />
-        </label>
-      </div>
+          >
+            {serverError}
+          </div>
+        )}
 
-    </form>
+
+        <div
+          className={
+            styles.submitArea
+          }
+        >
+
+          <div
+            className={
+              styles.submitNote
+            }
+          >
+            После отправки данные
+            заявки и прикреплённый
+            счёт будут переданы
+            логисту.
+          </div>
+
+
+          <button
+            type="submit"
+            disabled={
+              submitting
+            }
+            className={
+              styles.submitButton
+            }
+          >
+
+            {submitting ? (
+              <>
+                <LoaderCircle
+                  size={
+                    18
+                  }
+                  className={
+                    styles.spinner
+                  }
+                />
+
+                Отправляем заявку…
+              </>
+            ) : (
+              <>
+                <Send
+                  size={
+                    18
+                  }
+                />
+
+                Отправить заявку на транспорт
+              </>
+            )}
+
+          </button>
+
+        </div>
+
+
+        <div
+          className={
+            styles.honeypot
+          }
+          aria-hidden="true"
+        >
+          <label>
+            Website
+
+            <input
+              type="text"
+              name="website"
+              tabIndex={
+                -1
+              }
+              autoComplete="off"
+            />
+          </label>
+        </div>
+
+      </form>
+    </>
   );
 }
