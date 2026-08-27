@@ -48,7 +48,7 @@ export default async function TransportRequestPage() {
 
           <p className={styles.pageDescription}>
             Заполните данные по погрузке и выгрузке. После отправки
-            заявка автоматически поступит ответственному менеджеру.
+            заявка автоматически поступит Вале
           </p>
         </div>
       </div>
