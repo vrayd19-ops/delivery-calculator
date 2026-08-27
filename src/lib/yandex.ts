@@ -155,30 +155,17 @@ export async function geocodeAddress(
 
 
   if (input.uri) {
-    /*
-     * Если адрес был выбран
-     * из Геосаджеста,
-     * используем URI объекта.
-     */
     url.searchParams.set(
       'uri',
       input.uri
     );
 
-    /*
-     * geocode остаётся
-     * обязательным параметром.
-     */
     url.searchParams.set(
       'geocode',
       input.text ||
         ''
     );
 
-    /*
-     * Нужен только
-     * выбранный объект.
-     */
     url.searchParams.set(
       'results',
       '1'
@@ -192,10 +179,6 @@ export async function geocodeAddress(
   }
 
 
-  /*
-   * Ограничиваем поиск
-   * Москвой и Московской областью.
-   */
   url.searchParams.set(
     'bbox',
     '36.7,54.7~39.3,56.6'
@@ -312,29 +295,12 @@ export async function buildDrivingRoute(
   }
 
 
-  /*
-   * На локальном компьютере
-   * можно использовать свой OSRM.
-   *
-   * На Vercel используем
-   * публичный OSRM,
-   * если переменная не задана.
-   */
   const baseUrl =
     process.env
       .OSRM_BASE_URL ||
     'https://router.project-osrm.org';
 
 
-  /*
-   * Coordinate внутри приложения:
-   *
-   * [longitude, latitude]
-   *
-   * OSRM использует тот же порядок:
-   *
-   * longitude,latitude
-   */
   const coordinatesString =
     points
       .map(
@@ -376,21 +342,6 @@ export async function buildDrivingRoute(
   );
 
 
-  /*
-   * ВАЖНО:
-   *
-   * exclude=toll здесь НЕ используем.
-   *
-   * Локальный OSRM был подготовлен
-   * с профилем без платных дорог,
-   * поэтому там это работало.
-   *
-   * Публичный router.project-osrm.org
-   * может не поддерживать exclude=toll
-   * и возвращать HTTP 400.
-   */
-
-
   const response =
     await fetch(
       url.toString(),
@@ -404,12 +355,6 @@ export async function buildDrivingRoute(
     );
 
 
-  /*
-   * Если OSRM вернул ошибку,
-   * записываем в Vercel Logs
-   * не только HTTP-код,
-   * но и ответ сервера.
-   */
   if (!response.ok) {
     const errorText =
       await response.text();

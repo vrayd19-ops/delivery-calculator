@@ -17,11 +17,6 @@ import {
 import LogoutButton from '@/components/LogoutButton';
 
 
-/*
- * =========================================
- * НАСТРОЙКИ ВКЛАДКИ БРАУЗЕРА
- * =========================================
- */
 export const metadata: Metadata = {
   title: {
     default:
@@ -57,18 +52,12 @@ export const metadata: Metadata = {
 };
 
 
-/*
- * =========================================
- * КОРОТКОЕ НАЗВАНИЕ АДРЕСА
- * =========================================
- */
 function shortAddress(
   value?: string | null
 ) {
   if (!value) {
     return '—';
   }
-
 
   const parts =
     value
@@ -83,14 +72,12 @@ function shortAddress(
         Boolean
       );
 
-
   if (
     parts.length ===
     0
   ) {
     return value;
   }
-
 
   const useful =
     parts.filter(
@@ -107,7 +94,6 @@ function shortAddress(
           )
     );
 
-
   if (
     useful.length >=
     2
@@ -118,7 +104,6 @@ function shortAddress(
     ];
   }
 
-
   return (
     useful[0] ||
     parts[0]
@@ -126,11 +111,6 @@ function shortAddress(
 }
 
 
-/*
- * =========================================
- * ФОРМАТИРОВАНИЕ РУБЛЕЙ
- * =========================================
- */
 function rub(
   kopeks: bigint
 ) {
@@ -148,11 +128,6 @@ function rub(
 }
 
 
-/*
- * =========================================
- * ГЛАВНЫЙ LAYOUT
- * =========================================
- */
 export default async function RootLayout({
   children,
 }: {
@@ -162,12 +137,6 @@ export default async function RootLayout({
   const user =
     await getCurrentUser();
 
-
-  /*
-   * =====================================
-   * НЕАВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ
-   * =====================================
-   */
   if (!user) {
     return (
       <html lang="ru">
@@ -192,11 +161,6 @@ export default async function RootLayout({
     'ADMIN';
 
 
-  /*
-   * =====================================
-   * ПОСЛЕДНИЕ РАСЧЁТЫ
-   * =====================================
-   */
   const recentCalculations =
     await prisma.calculation.findMany({
       where:
@@ -233,17 +197,12 @@ export default async function RootLayout({
 
         <div className="app-shell">
 
-          {/*
-           * =====================================
-           * ЛЕВОЕ МЕНЮ
-           * =====================================
-           */}
           <aside className="app-sidebar">
 
             {/*
-             * =================================
-             * ЛОГОТИП БРТ
-             * =================================
+             * =====================================
+             * ЛОГОТИП
+             * =====================================
              */}
             <Link
               href="/"
@@ -261,9 +220,9 @@ export default async function RootLayout({
 
 
             {/*
-             * =================================
-             * ОСНОВНАЯ НАВИГАЦИЯ
-             * =================================
+             * =====================================
+             * ОСНОВНОЕ МЕНЮ
+             * =====================================
              */}
             <nav className="side-menu">
 
@@ -278,6 +237,27 @@ export default async function RootLayout({
 
                 <span>
                   Новый расчёт
+                </span>
+
+              </Link>
+
+
+              {/*
+               * =================================
+               * ЗАЯВКА НА ТРАНСПОРТ
+               * =================================
+               */}
+              <Link
+                href="/transport-request"
+                className="side-menu-item"
+              >
+
+                <span className="side-icon">
+                  ↗
+                </span>
+
+                <span>
+                  Заявка на транспорт
                 </span>
 
               </Link>
@@ -303,7 +283,7 @@ export default async function RootLayout({
 
               {/*
                * =================================
-               * РАЗДЕЛЫ АДМИНИСТРАТОРА
+               * ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА
                * =================================
                */}
               {isAdmin && (
@@ -389,9 +369,9 @@ export default async function RootLayout({
 
 
             {/*
-             * =================================
+             * =====================================
              * ПОСЛЕДНИЕ РАСЧЁТЫ
-             * =================================
+             * =====================================
              */}
             <div
               className="sidebar-recent"
@@ -457,10 +437,8 @@ export default async function RootLayout({
                         calculation
                           .points;
 
-
                       const firstPoint =
                         points[0];
-
 
                       const lastPoint =
                         points[
@@ -468,20 +446,17 @@ export default async function RootLayout({
                             1
                         ];
 
-
                       const from =
                         shortAddress(
                           firstPoint
                             ?.displayAddress
                         );
 
-
                       const to =
                         shortAddress(
                           lastPoint
                             ?.displayAddress
                         );
-
 
                       return (
                         <Link
@@ -565,11 +540,6 @@ export default async function RootLayout({
             </div>
 
 
-            {/*
-             * =================================
-             * ПОДСКАЗКА ДЛЯ МЕНЕДЖЕРА
-             * =================================
-             */}
             {!isAdmin && (
               <div
                 style={{
@@ -600,18 +570,8 @@ export default async function RootLayout({
           </aside>
 
 
-          {/*
-           * =====================================
-           * ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ
-           * =====================================
-           */}
           <main className="app-workspace">
 
-            {/*
-             * =================================
-             * ВЕРХНЯЯ ПАНЕЛЬ
-             * =================================
-             */}
             <header className="app-header">
 
               <div className="brt-header-title">
@@ -667,11 +627,6 @@ export default async function RootLayout({
             </header>
 
 
-            {/*
-             * =================================
-             * СОДЕРЖИМОЕ СТРАНИЦЫ
-             * =================================
-             */}
             <div className="app-content">
 
               {children}
