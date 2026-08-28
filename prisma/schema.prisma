@@ -47,15 +47,6 @@ model VehicleType {
   id   String @id @default(cuid())
   name String @unique
 
-  /**
-   * Ключ изображения транспорта.
-   * Примеры:
-   * gazelle-3m
-   * gazelle-6m
-   * shalanda
-   * manipulator-6m
-   * manipulator-katyusha
-   */
   imageKey String? @default("shalanda")
 
   basePriceKopeks    BigInt @default(0)
@@ -122,11 +113,6 @@ model AppSettings {
 model Calculation {
   id String @id @default(cuid())
 
-  /**
-   * Менеджер, создавший расчёт.
-   * Поле nullable, чтобы старые расчёты
-   * без пользователя продолжили работать.
-   */
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
 
@@ -160,8 +146,8 @@ model Calculation {
 
   servicesKopeks BigInt @default(0)
 
-  adjustmentKopeks BigInt  @default(0)
-  adjustmentReason String?
+  adjustmentKopeks  BigInt @default(0)
+  adjustmentReason  String?
 
   totalKopeks BigInt
 
@@ -227,82 +213,42 @@ model TransportRequest {
   id            String @id @default(cuid())
   requestNumber String @unique
 
-  /**
-   * Автор заявки внутри системы.
-   * Nullable оставляет запись сохранной,
-   * даже если пользователя удалят.
-   */
   createdByUserId String?
   createdByUser   User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  /**
-   * Менеджер.
-   */
   managerEmail String
 
-  /**
-   * Дата и желаемое время подачи.
-   */
+  customer String
+
   loadingDate       DateTime @db.Date
   desiredPickupTime String?
 
-  /**
-   * Предпочтительный транспорт.
-   * Сохраняем ID и название как снимок,
-   * чтобы заявка не зависела от изменения
-   * справочника транспорта в будущем.
-   */
   preferredVehicleTypeId String?
   preferredVehicleName   String?
 
-  /**
-   * Параметры груза.
-   */
   totalWeight       Decimal @db.Decimal(8, 2)
   cargoLength       Decimal @db.Decimal(8, 2)
   needsStakes       Boolean
   logisticsFitCheck Boolean @default(false)
 
-  /**
-   * Погрузка.
-   * Должен присутствовать адрес
-   * или ссылка на Яндекс Карты.
-   */
   loadingAddress      String?
   loadingMapUrl       String?
   loadingContactName  String
   loadingContactPhone String
   loadingUntil        String
 
-  /**
-   * Выгрузка.
-   * Должен присутствовать адрес
-   * или ссылка на Яндекс Карты.
-   */
   unloadingAddress      String?
   unloadingMapUrl       String?
   unloadingContactName  String
   unloadingContactPhone String
   unloadingUntil        String
 
-  /**
-   * Метаданные счёта.
-   * Сам файл в PostgreSQL не сохраняется.
-   */
   invoiceFileName String
   invoiceFileType String
   invoiceFileSize Int
 
-  /**
-   * Дополнительный комментарий.
-   */
   comment String?
 
-  /**
-   * Статусы Telegram.
-   * Текст и файл отслеживаются отдельно,
-   * чтобы корректно обработать частичную ошибку.
-   */
   telegramTextSent  Boolean @default(false)
   telegramFileSent  Boolean @default(false)
   telegramSent      Boolean @default(false)
@@ -315,4 +261,5 @@ model TransportRequest {
   @@index([createdByUserId])
   @@index([createdAt])
   @@index([managerEmail])
+  @@index([customer])
 }

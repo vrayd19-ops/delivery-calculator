@@ -56,6 +56,9 @@ type FormValues = {
   managerEmail:
     string;
 
+  customer:
+    string;
+
   loadingDate:
     string;
 
@@ -159,7 +162,7 @@ function formatFileSize(
     bytes <
     1024
   ) {
-    return `${bytes} Б`;
+    return `${bytes} Р‘`;
   }
 
   if (
@@ -172,7 +175,7 @@ function formatFileSize(
       1024
     ).toFixed(
       1
-    )} КБ`;
+    )} РљР‘`;
   }
 
   return `${(
@@ -181,7 +184,7 @@ function formatFileSize(
     1024
   ).toFixed(
     1
-  )} МБ`;
+  )} РњР‘`;
 }
 
 
@@ -293,6 +296,9 @@ export default function TransportRequestForm({
     useState<FormValues>({
       managerEmail:
         defaultManagerEmail,
+
+      customer:
+        '',
 
       loadingDate:
         '',
@@ -441,7 +447,7 @@ export default function TransportRequestForm({
             values
               .preferredVehicleTypeId
         )?.name ||
-        'Подобрать логисту',
+        'РџРѕРґРѕР±СЂР°С‚СЊ Р»РѕРіРёСЃС‚Сѓ',
       [
         vehicles,
         values
@@ -562,7 +568,7 @@ export default function TransportRequestForm({
           ...current,
 
           invoiceFile:
-            'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
+            'Р”РѕРїСѓСЃС‚РёРјС‹ С‚РѕР»СЊРєРѕ PDF, JPG, JPEG, PNG РёР»Рё WEBP.',
         })
       );
 
@@ -581,7 +587,7 @@ export default function TransportRequestForm({
           ...current,
 
           invoiceFile:
-            'Для отправки через текущий сервер размер файла не должен превышать 4 МБ.',
+            'Р”Р»СЏ РѕС‚РїСЂР°РІРєРё С‡РµСЂРµР· С‚РµРєСѓС‰РёР№ СЃРµСЂРІРµСЂ СЂР°Р·РјРµСЂ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РµРЅ РїСЂРµРІС‹С€Р°С‚СЊ 4 РњР‘.',
         })
       );
 
@@ -600,7 +606,7 @@ export default function TransportRequestForm({
           ...current,
 
           invoiceFile:
-            'Файл пустой. Выберите другой файл.',
+            'Р¤Р°Р№Р» РїСѓСЃС‚РѕР№. Р’С‹Р±РµСЂРёС‚Рµ РґСЂСѓРіРѕР№ С„Р°Р№Р».',
         })
       );
 
@@ -703,14 +709,23 @@ export default function TransportRequestForm({
         .trim()
     ) {
       errors.managerEmail =
-        'Укажите почту менеджера.';
+        'РЈРєР°Р¶РёС‚Рµ РїРѕС‡С‚Сѓ РјРµРЅРµРґР¶РµСЂР°.';
     } else if (
       !isValidEmail(
         values.managerEmail
       )
     ) {
       errors.managerEmail =
-        'Укажите корректный email менеджера.';
+        'РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅС‹Р№ email РјРµРЅРµРґР¶РµСЂР°.';
+    }
+
+
+    if (
+      !values.customer
+        .trim()
+    ) {
+      errors.customer =
+        'Укажите заказчика.';
     }
 
 
@@ -718,13 +733,13 @@ export default function TransportRequestForm({
       !values.loadingDate
     ) {
       errors.loadingDate =
-        'Укажите дату погрузки.';
+        'РЈРєР°Р¶РёС‚Рµ РґР°С‚Сѓ РїРѕРіСЂСѓР·РєРё.';
     } else if (
       values.loadingDate <
       today
     ) {
       errors.loadingDate =
-        'Дата погрузки не может быть раньше сегодняшнего дня.';
+        'Р”Р°С‚Р° РїРѕРіСЂСѓР·РєРё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ СЂР°РЅСЊС€Рµ СЃРµРіРѕРґРЅСЏС€РЅРµРіРѕ РґРЅСЏ.';
     }
 
 
@@ -741,7 +756,7 @@ export default function TransportRequestForm({
         0
     ) {
       errors.totalWeight =
-        'Укажите общий тоннаж больше 0.';
+        'РЈРєР°Р¶РёС‚Рµ РѕР±С‰РёР№ С‚РѕРЅРЅР°Р¶ Р±РѕР»СЊС€Рµ 0.';
     }
 
 
@@ -758,7 +773,7 @@ export default function TransportRequestForm({
         0
     ) {
       errors.cargoLength =
-        'Укажите максимальную длину груза больше 0.';
+        'РЈРєР°Р¶РёС‚Рµ РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ РґР»РёРЅСѓ РіСЂСѓР·Р° Р±РѕР»СЊС€Рµ 0.';
     }
 
 
@@ -766,7 +781,7 @@ export default function TransportRequestForm({
       !values.needsStakes
     ) {
       errors.needsStakes =
-        'Укажите, нужны ли коники.';
+        'РЈРєР°Р¶РёС‚Рµ, РЅСѓР¶РЅС‹ Р»Рё РєРѕРЅРёРєРё.';
     }
 
 
@@ -777,7 +792,7 @@ export default function TransportRequestForm({
         .trim()
     ) {
       errors.loadingAddress =
-        'Укажите точный адрес погрузки или ссылку на Яндекс Карты.';
+        'РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РїРѕРіСЂСѓР·РєРё РёР»Рё СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
 
       errors.loadingMapUrl =
         errors.loadingAddress;
@@ -791,7 +806,7 @@ export default function TransportRequestForm({
       )
     ) {
       errors.loadingMapUrl =
-        'Укажите корректную ссылку на Яндекс Карты.';
+        'РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅСѓСЋ СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
     }
 
 
@@ -801,7 +816,7 @@ export default function TransportRequestForm({
         .trim()
     ) {
       errors.loadingContactName =
-        'Укажите имя контактного лица.';
+        'РЈРєР°Р¶РёС‚Рµ РёРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°.';
     }
 
 
@@ -811,7 +826,7 @@ export default function TransportRequestForm({
         .trim()
     ) {
       errors.loadingContactPhone =
-        'Укажите телефон на погрузке.';
+        'РЈРєР°Р¶РёС‚Рµ С‚РµР»РµС„РѕРЅ РЅР° РїРѕРіСЂСѓР·РєРµ.';
     }
 
 
@@ -819,7 +834,7 @@ export default function TransportRequestForm({
       !values.loadingUntil
     ) {
       errors.loadingUntil =
-        'Укажите, до скольки работает погрузка.';
+        'РЈРєР°Р¶РёС‚Рµ, РґРѕ СЃРєРѕР»СЊРєРё СЂР°Р±РѕС‚Р°РµС‚ РїРѕРіСЂСѓР·РєР°.';
     }
 
 
@@ -830,7 +845,7 @@ export default function TransportRequestForm({
         .trim()
     ) {
       errors.unloadingAddress =
-        'Укажите точный адрес выгрузки или ссылку на Яндекс Карты.';
+        'РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РІС‹РіСЂСѓР·РєРё РёР»Рё СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
 
       errors.unloadingMapUrl =
         errors.unloadingAddress;
@@ -844,7 +859,7 @@ export default function TransportRequestForm({
       )
     ) {
       errors.unloadingMapUrl =
-        'Укажите корректную ссылку на Яндекс Карты.';
+        'РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅСѓСЋ СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
     }
 
 
@@ -854,7 +869,7 @@ export default function TransportRequestForm({
         .trim()
     ) {
       errors.unloadingContactName =
-        'Укажите имя контактного лица.';
+        'РЈРєР°Р¶РёС‚Рµ РёРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°.';
     }
 
 
@@ -864,7 +879,7 @@ export default function TransportRequestForm({
         .trim()
     ) {
       errors.unloadingContactPhone =
-        'Укажите телефон на выгрузке.';
+        'РЈРєР°Р¶РёС‚Рµ С‚РµР»РµС„РѕРЅ РЅР° РІС‹РіСЂСѓР·РєРµ.';
     }
 
 
@@ -872,7 +887,7 @@ export default function TransportRequestForm({
       !values.unloadingUntil
     ) {
       errors.unloadingUntil =
-        'Укажите, до скольки принимают на объекте.';
+        'РЈРєР°Р¶РёС‚Рµ, РґРѕ СЃРєРѕР»СЊРєРё РїСЂРёРЅРёРјР°СЋС‚ РЅР° РѕР±СЉРµРєС‚Рµ.';
     }
 
 
@@ -880,7 +895,7 @@ export default function TransportRequestForm({
       !invoiceFile
     ) {
       errors.invoiceFile =
-        'Прикрепите фото или PDF счёта на погрузку.';
+        'РџСЂРёРєСЂРµРїРёС‚Рµ С„РѕС‚Рѕ РёР»Рё PDF СЃС‡С‘С‚Р° РЅР° РїРѕРіСЂСѓР·РєСѓ.';
     }
 
 
@@ -979,6 +994,12 @@ export default function TransportRequestForm({
       formData.set(
         'managerEmail',
         values.managerEmail.trim()
+      );
+
+
+      formData.set(
+        'customer',
+        values.customer.trim()
       );
 
 
@@ -1174,7 +1195,7 @@ export default function TransportRequestForm({
 
         setServerError(
           result.message ||
-          'Не удалось отправить заявку. Проверьте данные и попробуйте ещё раз.'
+          'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ. РџСЂРѕРІРµСЂСЊС‚Рµ РґР°РЅРЅС‹Рµ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.'
         );
 
         return;
@@ -1194,7 +1215,7 @@ export default function TransportRequestForm({
 
 
       setServerError(
-        'Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз.'
+        'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ. РџСЂРѕРІРµСЂСЊС‚Рµ СЃРѕРµРґРёРЅРµРЅРёРµ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.'
       );
     } finally {
       setSubmitting(
@@ -1232,7 +1253,7 @@ export default function TransportRequestForm({
             styles.successEyebrow
           }
         >
-          Готово
+          Р“РѕС‚РѕРІРѕ
         </div>
 
 
@@ -1241,7 +1262,7 @@ export default function TransportRequestForm({
             styles.successTitle
           }
         >
-          Заявка отправлена
+          Р—Р°СЏРІРєР° РѕС‚РїСЂР°РІР»РµРЅР°
         </h2>
 
 
@@ -1250,8 +1271,8 @@ export default function TransportRequestForm({
             styles.successText
           }
         >
-          Информация передана
-          ответственному менеджеру.
+          РРЅС„РѕСЂРјР°С†РёСЏ РїРµСЂРµРґР°РЅР°
+          РѕС‚РІРµС‚СЃС‚РІРµРЅРЅРѕРјСѓ РјРµРЅРµРґР¶РµСЂСѓ.
         </p>
 
 
@@ -1282,6 +1303,9 @@ export default function TransportRequestForm({
               setValues({
                 managerEmail:
                   defaultManagerEmail,
+
+                customer:
+                  '',
 
                 loadingDate:
                   '',
@@ -1358,7 +1382,7 @@ export default function TransportRequestForm({
             }
           />
 
-          Создать ещё одну заявку
+          РЎРѕР·РґР°С‚СЊ РµС‰С‘ РѕРґРЅСѓ Р·Р°СЏРІРєСѓ
         </button>
 
       </div>
@@ -1372,7 +1396,7 @@ export default function TransportRequestForm({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Не все поля заполнены"
+          aria-label="РќРµ РІСЃРµ РїРѕР»СЏ Р·Р°РїРѕР»РЅРµРЅС‹"
           onClick={
             () =>
               setShowMissingFieldsModal(
@@ -1444,7 +1468,7 @@ export default function TransportRequestForm({
           >
             <button
               type="button"
-              aria-label="Закрыть уведомление"
+              aria-label="Р—Р°РєСЂС‹С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ"
               onClick={
                 () =>
                   setShowMissingFieldsModal(
@@ -1558,7 +1582,7 @@ export default function TransportRequestForm({
                   1.25,
               }}
             >
-              читай внимательно и заполняй все пункты
+              С‡РёС‚Р°Р№ РІРЅРёРјР°С‚РµР»СЊРЅРѕ Рё Р·Р°РїРѕР»РЅСЏР№ РІСЃРµ РїСѓРЅРєС‚С‹
             </div>
 
 
@@ -1577,9 +1601,9 @@ export default function TransportRequestForm({
                   1.55,
               }}
             >
-              В заявке остались
-              незаполненные обязательные
-              поля. Они отмечены ниже.
+              Р’ Р·Р°СЏРІРєРµ РѕСЃС‚Р°Р»РёСЃСЊ
+              РЅРµР·Р°РїРѕР»РЅРµРЅРЅС‹Рµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ
+              РїРѕР»СЏ. РћРЅРё РѕС‚РјРµС‡РµРЅС‹ РЅРёР¶Рµ.
             </div>
 
 
@@ -1626,7 +1650,7 @@ export default function TransportRequestForm({
                   'pointer',
               }}
             >
-              Понятно
+              РџРѕРЅСЏС‚РЅРѕ
             </button>
           </div>
         </div>
@@ -1670,7 +1694,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Общая информация
+                РћР±С‰Р°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ
               </h2>
 
               <p
@@ -1678,9 +1702,9 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Кто создаёт заявку
-                и когда требуется
-                транспорт.
+                РљС‚Рѕ СЃРѕР·РґР°С‘С‚ Р·Р°СЏРІРєСѓ
+                Рё РєРѕРіРґР° С‚СЂРµР±СѓРµС‚СЃСЏ
+                С‚СЂР°РЅСЃРїРѕСЂС‚.
               </p>
 
             </div>
@@ -1706,7 +1730,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Почта менеджера
+                РџРѕС‡С‚Р° РјРµРЅРµРґР¶РµСЂР°
                 <span
                   className={
                     styles.required
@@ -1760,6 +1784,68 @@ export default function TransportRequestForm({
               className={
                 styles.field
               }
+              data-field="customer"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Заказчик
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .customer
+                  )
+                }
+                value={
+                  values.customer
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'customer',
+                      event.target.value
+                    )
+                }
+                placeholder={'ООО "Организация"'}
+                autoComplete="organization"
+              />
+
+              {fieldErrors.customer && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .customer
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
               data-field="loadingDate"
             >
 
@@ -1768,7 +1854,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Дата погрузки
+                Р”Р°С‚Р° РїРѕРіСЂСѓР·РєРё
                 <span
                   className={
                     styles.required
@@ -1830,7 +1916,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Желаемое время подачи машины
+                Р–РµР»Р°РµРјРѕРµ РІСЂРµРјСЏ РїРѕРґР°С‡Рё РјР°С€РёРЅС‹
               </label>
 
               <input
@@ -1857,8 +1943,8 @@ export default function TransportRequestForm({
                   styles.hint
                 }
               >
-                Необязательно.
-                Например, 09:00.
+                РќРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ.
+                РќР°РїСЂРёРјРµСЂ, 09:00.
               </div>
 
             </div>
@@ -1876,7 +1962,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Предпочтительный транспорт
+                РџСЂРµРґРїРѕС‡С‚РёС‚РµР»СЊРЅС‹Р№ С‚СЂР°РЅСЃРїРѕСЂС‚
               </label>
 
               <select
@@ -1902,7 +1988,7 @@ export default function TransportRequestForm({
               >
 
                 <option value="">
-                  Не выбрано / подобрать логисту
+                  РќРµ РІС‹Р±СЂР°РЅРѕ / РїРѕРґРѕР±СЂР°С‚СЊ Р»РѕРіРёСЃС‚Сѓ
                 </option>
 
                 {vehicles.map(
@@ -1973,7 +2059,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Параметры груза
+                РџР°СЂР°РјРµС‚СЂС‹ РіСЂСѓР·Р°
               </h2>
 
               <p
@@ -1981,9 +2067,9 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Основные параметры
-                для выбора подходящей
-                машины.
+                РћСЃРЅРѕРІРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹
+                РґР»СЏ РІС‹Р±РѕСЂР° РїРѕРґС…РѕРґСЏС‰РµР№
+                РјР°С€РёРЅС‹.
               </p>
 
             </div>
@@ -2009,7 +2095,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Общий тоннаж
+                РћР±С‰РёР№ С‚РѕРЅРЅР°Р¶
                 <span
                   className={
                     styles.required
@@ -2054,7 +2140,7 @@ export default function TransportRequestForm({
                     styles.unit
                   }
                 >
-                  т
+                  С‚
                 </span>
 
               </div>
@@ -2064,8 +2150,8 @@ export default function TransportRequestForm({
                   styles.hint
                 }
               >
-                Можно вводить
-                1,5 или 1.5.
+                РњРѕР¶РЅРѕ РІРІРѕРґРёС‚СЊ
+                1,5 РёР»Рё 1.5.
               </div>
 
               {fieldErrors.totalWeight && (
@@ -2096,7 +2182,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Максимальная длина груза
+                РњР°РєСЃРёРјР°Р»СЊРЅР°СЏ РґР»РёРЅР° РіСЂСѓР·Р°
                 <span
                   className={
                     styles.required
@@ -2141,7 +2227,7 @@ export default function TransportRequestForm({
                     styles.unit
                   }
                 >
-                  м
+                  Рј
                 </span>
 
               </div>
@@ -2176,7 +2262,7 @@ export default function TransportRequestForm({
                 styles.label
               }
             >
-              Нужны ли коники?
+              РќСѓР¶РЅС‹ Р»Рё РєРѕРЅРёРєРё?
               <span
                 className={
                   styles.required
@@ -2208,7 +2294,7 @@ export default function TransportRequestForm({
                     )
                 }
               >
-                Да
+                Р”Р°
               </button>
 
               <button
@@ -2227,7 +2313,7 @@ export default function TransportRequestForm({
                     )
                 }
               >
-                Нет
+                РќРµС‚
               </button>
 
             </div>
@@ -2237,9 +2323,9 @@ export default function TransportRequestForm({
                 styles.hint
               }
             >
-              Укажите, требуется ли
-              перевозка груза с
-              использованием коников.
+              РЈРєР°Р¶РёС‚Рµ, С‚СЂРµР±СѓРµС‚СЃСЏ Р»Рё
+              РїРµСЂРµРІРѕР·РєР° РіСЂСѓР·Р° СЃ
+              РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј РєРѕРЅРёРєРѕРІ.
             </div>
 
             {fieldErrors.needsStakes && (
@@ -2298,17 +2384,17 @@ export default function TransportRequestForm({
             <span>
 
               <strong>
-                Уточнить у логиста,
-                поместится ли весь груз
-                в одну машину
+                РЈС‚РѕС‡РЅРёС‚СЊ Сѓ Р»РѕРіРёСЃС‚Р°,
+                РїРѕРјРµСЃС‚РёС‚СЃСЏ Р»Рё РІРµСЃСЊ РіСЂСѓР·
+                РІ РѕРґРЅСѓ РјР°С€РёРЅСѓ
               </strong>
 
               <small>
-                Поставьте галочку,
-                если перед отправкой
-                машины логист должен
-                проверить вместимость
-                всего груза.
+                РџРѕСЃС‚Р°РІСЊС‚Рµ РіР°Р»РѕС‡РєСѓ,
+                РµСЃР»Рё РїРµСЂРµРґ РѕС‚РїСЂР°РІРєРѕР№
+                РјР°С€РёРЅС‹ Р»РѕРіРёСЃС‚ РґРѕР»Р¶РµРЅ
+                РїСЂРѕРІРµСЂРёС‚СЊ РІРјРµСЃС‚РёРјРѕСЃС‚СЊ
+                РІСЃРµРіРѕ РіСЂСѓР·Р°.
               </small>
 
             </span>
@@ -2351,7 +2437,7 @@ export default function TransportRequestForm({
                     styles.sectionTitle
                   }
                 >
-                  Погрузка
+                  РџРѕРіСЂСѓР·РєР°
                 </h2>
 
                 <p
@@ -2359,9 +2445,9 @@ export default function TransportRequestForm({
                     styles.sectionDescription
                   }
                 >
-                  Где забрать груз
-                  и с кем связаться
-                  на месте.
+                  Р“РґРµ Р·Р°Р±СЂР°С‚СЊ РіСЂСѓР·
+                  Рё СЃ РєРµРј СЃРІСЏР·Р°С‚СЊСЃСЏ
+                  РЅР° РјРµСЃС‚Рµ.
                 </p>
 
               </div>
@@ -2381,7 +2467,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Точный адрес погрузки
+                РўРѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РїРѕРіСЂСѓР·РєРё
               </label>
 
               <input
@@ -2404,7 +2490,7 @@ export default function TransportRequestForm({
                       event.target.value
                     )
                 }
-                placeholder="Московская область, Балашиха, ..."
+                placeholder="РњРѕСЃРєРѕРІСЃРєР°СЏ РѕР±Р»Р°СЃС‚СЊ, Р‘Р°Р»Р°С€РёС…Р°, ..."
               />
 
             </div>
@@ -2415,7 +2501,7 @@ export default function TransportRequestForm({
                 styles.orDivider
               }
             >
-              или
+              РёР»Рё
             </div>
 
 
@@ -2431,7 +2517,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Ссылка на Яндекс Карты — погрузка
+                РЎСЃС‹Р»РєР° РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹ вЂ” РїРѕРіСЂСѓР·РєР°
               </label>
 
               <input
@@ -2462,9 +2548,9 @@ export default function TransportRequestForm({
                   styles.hint
                 }
               >
-                Укажите точный адрес
-                или вставьте ссылку
-                на точку в Яндекс Картах.
+                РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ
+                РёР»Рё РІСЃС‚Р°РІСЊС‚Рµ СЃСЃС‹Р»РєСѓ
+                РЅР° С‚РѕС‡РєСѓ РІ РЇРЅРґРµРєСЃ РљР°СЂС‚Р°С….
               </div>
 
               {(fieldErrors.loadingAddress ||
@@ -2505,7 +2591,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Имя контактного лица
+                РРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°
                 <span
                   className={
                     styles.required
@@ -2536,7 +2622,7 @@ export default function TransportRequestForm({
                       event.target.value
                     )
                 }
-                placeholder="Иван"
+                placeholder="РРІР°РЅ"
               />
 
               {fieldErrors.loadingContactName && (
@@ -2567,7 +2653,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Телефон
+                РўРµР»РµС„РѕРЅ
                 <span
                   className={
                     styles.required
@@ -2629,7 +2715,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                До скольки работает погрузка?
+                Р”Рѕ СЃРєРѕР»СЊРєРё СЂР°Р±РѕС‚Р°РµС‚ РїРѕРіСЂСѓР·РєР°?
                 <span
                   className={
                     styles.required
@@ -2706,7 +2792,7 @@ export default function TransportRequestForm({
                     styles.sectionTitle
                   }
                 >
-                  Выгрузка
+                  Р’С‹РіСЂСѓР·РєР°
                 </h2>
 
                 <p
@@ -2714,9 +2800,9 @@ export default function TransportRequestForm({
                     styles.sectionDescription
                   }
                 >
-                  Куда доставить груз
-                  и кто принимает
-                  на объекте.
+                  РљСѓРґР° РґРѕСЃС‚Р°РІРёС‚СЊ РіСЂСѓР·
+                  Рё РєС‚Рѕ РїСЂРёРЅРёРјР°РµС‚
+                  РЅР° РѕР±СЉРµРєС‚Рµ.
                 </p>
 
               </div>
@@ -2736,7 +2822,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Точный адрес выгрузки
+                РўРѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РІС‹РіСЂСѓР·РєРё
               </label>
 
               <input
@@ -2760,7 +2846,7 @@ export default function TransportRequestForm({
                       event.target.value
                     )
                 }
-                placeholder="Москва, ..."
+                placeholder="РњРѕСЃРєРІР°, ..."
               />
 
             </div>
@@ -2771,7 +2857,7 @@ export default function TransportRequestForm({
                 styles.orDivider
               }
             >
-              или
+              РёР»Рё
             </div>
 
 
@@ -2787,7 +2873,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Ссылка на Яндекс Карты — выгрузка
+                РЎСЃС‹Р»РєР° РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹ вЂ” РІС‹РіСЂСѓР·РєР°
               </label>
 
               <input
@@ -2819,9 +2905,9 @@ export default function TransportRequestForm({
                   styles.hint
                 }
               >
-                Укажите точный адрес
-                или вставьте ссылку
-                на точку в Яндекс Картах.
+                РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ
+                РёР»Рё РІСЃС‚Р°РІСЊС‚Рµ СЃСЃС‹Р»РєСѓ
+                РЅР° С‚РѕС‡РєСѓ РІ РЇРЅРґРµРєСЃ РљР°СЂС‚Р°С….
               </div>
 
               {(fieldErrors.unloadingAddress ||
@@ -2862,7 +2948,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Имя контактного лица
+                РРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°
                 <span
                   className={
                     styles.required
@@ -2893,7 +2979,7 @@ export default function TransportRequestForm({
                       event.target.value
                     )
                 }
-                placeholder="Сергей"
+                placeholder="РЎРµСЂРіРµР№"
               />
 
               {fieldErrors.unloadingContactName && (
@@ -2924,7 +3010,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                Телефон
+                РўРµР»РµС„РѕРЅ
                 <span
                   className={
                     styles.required
@@ -2986,7 +3072,7 @@ export default function TransportRequestForm({
                   styles.label
                 }
               >
-                До скольки принимают на объекте?
+                Р”Рѕ СЃРєРѕР»СЊРєРё РїСЂРёРЅРёРјР°СЋС‚ РЅР° РѕР±СЉРµРєС‚Рµ?
                 <span
                   className={
                     styles.required
@@ -3066,7 +3152,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Счёт на погрузку
+                РЎС‡С‘С‚ РЅР° РїРѕРіСЂСѓР·РєСѓ
               </h2>
 
               <p
@@ -3074,8 +3160,8 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Прикрепите фотографию,
-                скриншот или PDF счёта.
+                РџСЂРёРєСЂРµРїРёС‚Рµ С„РѕС‚РѕРіСЂР°С„РёСЋ,
+                СЃРєСЂРёРЅС€РѕС‚ РёР»Рё PDF СЃС‡С‘С‚Р°.
               </p>
 
             </div>
@@ -3151,17 +3237,17 @@ export default function TransportRequestForm({
                 />
 
                 <strong>
-                  Перетащите счёт сюда
-                  или нажмите для выбора файла
+                  РџРµСЂРµС‚Р°С‰РёС‚Рµ СЃС‡С‘С‚ СЃСЋРґР°
+                  РёР»Рё РЅР°Р¶РјРёС‚Рµ РґР»СЏ РІС‹Р±РѕСЂР° С„Р°Р№Р»Р°
                 </strong>
 
                 <span>
-                  PDF, JPG, JPEG, PNG или WEBP
+                  PDF, JPG, JPEG, PNG РёР»Рё WEBP
                 </span>
 
                 <small>
-                  Максимальный размер
-                  в текущей версии — 4 МБ
+                  РњР°РєСЃРёРјР°Р»СЊРЅС‹Р№ СЂР°Р·РјРµСЂ
+                  РІ С‚РµРєСѓС‰РµР№ РІРµСЂСЃРёРё вЂ” 4 РњР‘
                 </small>
 
               </div>
@@ -3183,7 +3269,7 @@ export default function TransportRequestForm({
                       src={
                         previewUrl
                       }
-                      alt="Предпросмотр счёта"
+                      alt="РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ СЃС‡С‘С‚Р°"
                     />
                   ) : (
                     <FileText
@@ -3237,12 +3323,12 @@ export default function TransportRequestForm({
                     <span>
                       {
                         invoiceFile.type ||
-                        'Файл'
+                        'Р¤Р°Р№Р»'
                       }
                     </span>
 
                     <span>
-                      ·
+                      В·
                     </span>
 
                     <span>
@@ -3282,7 +3368,7 @@ export default function TransportRequestForm({
                       }
                     />
 
-                    Заменить
+                    Р—Р°РјРµРЅРёС‚СЊ
                   </button>
 
 
@@ -3301,7 +3387,7 @@ export default function TransportRequestForm({
                       }
                     />
 
-                    Удалить
+                    РЈРґР°Р»РёС‚СЊ
                   </button>
 
                 </div>
@@ -3370,7 +3456,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Комментарий к заявке
+                РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє Р·Р°СЏРІРєРµ
               </h2>
 
               <p
@@ -3378,8 +3464,8 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Необязательная
-                дополнительная информация.
+                РќРµРѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ
+                РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ.
               </p>
 
             </div>
@@ -3403,7 +3489,7 @@ export default function TransportRequestForm({
                   event.target.value
                 )
             }
-            placeholder="Дополнительная информация для логиста или водителя"
+            placeholder="Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ РґР»СЏ Р»РѕРіРёСЃС‚Р° РёР»Рё РІРѕРґРёС‚РµР»СЏ"
             rows={
               5
             }
@@ -3439,7 +3525,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Проверьте заявку
+                РџСЂРѕРІРµСЂСЊС‚Рµ Р·Р°СЏРІРєСѓ
               </h2>
 
               <p
@@ -3447,8 +3533,8 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Короткая проверка
-                перед отправкой.
+                РљРѕСЂРѕС‚РєР°СЏ РїСЂРѕРІРµСЂРєР°
+                РїРµСЂРµРґ РѕС‚РїСЂР°РІРєРѕР№.
               </p>
 
             </div>
@@ -3468,12 +3554,30 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Менеджер
+                РњРµРЅРµРґР¶РµСЂ
               </span>
 
               <strong>
                 {
                   values.managerEmail ||
+                  'вЂ”'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Заказчик
+              </span>
+
+              <strong>
+                {
+                  values.customer ||
                   '—'
                 }
               </strong>
@@ -3486,13 +3590,13 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Дата погрузки
+                Р”Р°С‚Р° РїРѕРіСЂСѓР·РєРё
               </span>
 
               <strong>
                 {
                   values.loadingDate ||
-                  '—'
+                  'вЂ”'
                 }
               </strong>
             </div>
@@ -3504,7 +3608,7 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Транспорт
+                РўСЂР°РЅСЃРїРѕСЂС‚
               </span>
 
               <strong>
@@ -3521,16 +3625,16 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Груз
+                Р“СЂСѓР·
               </span>
 
               <strong>
                 {values.totalWeight ||
-                  '—'}{' '}
-                т /{' '}
+                  'вЂ”'}{' '}
+                С‚ /{' '}
                 {values.cargoLength ||
-                  '—'}{' '}
-                м
+                  'вЂ”'}{' '}
+                Рј
               </strong>
             </div>
 
@@ -3541,18 +3645,18 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Коники
+                РљРѕРЅРёРєРё
               </span>
 
               <strong>
                 {
                   values.needsStakes ===
                   'yes'
-                    ? 'Да'
+                    ? 'Р”Р°'
                     : values.needsStakes ===
                       'no'
-                      ? 'Нет'
-                      : '—'
+                      ? 'РќРµС‚'
+                      : 'вЂ”'
                 }
               </strong>
             </div>
@@ -3564,15 +3668,15 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Проверка логистом
+                РџСЂРѕРІРµСЂРєР° Р»РѕРіРёСЃС‚РѕРј
               </span>
 
               <strong>
                 {
                   values
                     .logisticsFitCheck
-                    ? 'Да'
-                    : 'Нет'
+                    ? 'Р”Р°'
+                    : 'РќРµС‚'
                 }
               </strong>
             </div>
@@ -3584,14 +3688,14 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Погрузка
+                РџРѕРіСЂСѓР·РєР°
               </span>
 
               <strong>
                 {
                   values.loadingAddress ||
                   values.loadingMapUrl ||
-                  '—'
+                  'вЂ”'
                 }
               </strong>
             </div>
@@ -3603,14 +3707,14 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Выгрузка
+                Р’С‹РіСЂСѓР·РєР°
               </span>
 
               <strong>
                 {
                   values.unloadingAddress ||
                   values.unloadingMapUrl ||
-                  '—'
+                  'вЂ”'
                 }
               </strong>
             </div>
@@ -3622,14 +3726,14 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Счёт
+                РЎС‡С‘С‚
               </span>
 
               <strong>
                 {
                   invoiceFile
                     ? invoiceFile.name
-                    : 'Не прикреплён'
+                    : 'РќРµ РїСЂРёРєСЂРµРїР»С‘РЅ'
                 }
               </strong>
             </div>
@@ -3661,10 +3765,10 @@ export default function TransportRequestForm({
               styles.submitNote
             }
           >
-            После отправки данные
-            заявки и прикреплённый
-            счёт будут переданы
-            логисту.
+            РџРѕСЃР»Рµ РѕС‚РїСЂР°РІРєРё РґР°РЅРЅС‹Рµ
+            Р·Р°СЏРІРєРё Рё РїСЂРёРєСЂРµРїР»С‘РЅРЅС‹Р№
+            СЃС‡С‘С‚ Р±СѓРґСѓС‚ РїРµСЂРµРґР°РЅС‹
+            Р»РѕРіРёСЃС‚Сѓ.
           </div>
 
 
@@ -3689,7 +3793,7 @@ export default function TransportRequestForm({
                   }
                 />
 
-                Отправляем заявку…
+                РћС‚РїСЂР°РІР»СЏРµРј Р·Р°СЏРІРєСѓвЂ¦
               </>
             ) : (
               <>
@@ -3699,7 +3803,7 @@ export default function TransportRequestForm({
                   }
                 />
 
-                Отправить заявку на транспорт
+                РћС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ РЅР° С‚СЂР°РЅСЃРїРѕСЂС‚
               </>
             )}
 

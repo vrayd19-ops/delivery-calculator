@@ -30,21 +30,6 @@ export const dynamic =
   'force-dynamic';
 
 
-/*
- * =========================================
- * ПРОСТАЯ ЗАЩИТА ОТ ЧАСТЫХ ПОВТОРОВ
- * =========================================
- *
- * Это дополнительная защита поверх:
- *
- * - обязательной авторизации;
- * - honeypot;
- * - блокировки кнопки на frontend.
- *
- * Для одного экземпляра сервера
- * ограничиваем количество запросов
- * от одного IP.
- */
 const RATE_LIMIT_WINDOW_MS =
   10 * 60 * 1000;
 
@@ -83,11 +68,6 @@ if (
 }
 
 
-/*
- * =========================================
- * БЕЗОПАСНЫЙ JSON-ОТВЕТ
- * =========================================
- */
 function errorResponse(
   message: string,
   status = 400,
@@ -117,11 +97,6 @@ function errorResponse(
 }
 
 
-/*
- * =========================================
- * IP ПОЛЬЗОВАТЕЛЯ
- * =========================================
- */
 function getClientIp(
   request:
     NextRequest
@@ -152,11 +127,6 @@ function getClientIp(
 }
 
 
-/*
- * =========================================
- * RATE LIMIT
- * =========================================
- */
 function isRateLimited(
   ip: string
 ) {
@@ -207,11 +177,6 @@ function isRateLimited(
 }
 
 
-/*
- * =========================================
- * ПОЛУЧЕНИЕ СТРОКИ ИЗ FORMDATA
- * =========================================
- */
 function getText(
   formData:
     FormData,
@@ -235,11 +200,6 @@ function getText(
 }
 
 
-/*
- * =========================================
- * ПРОВЕРКА РАСШИРЕНИЯ ФАЙЛА
- * =========================================
- */
 function isAllowedFileExtension(
   fileName:
     string
@@ -269,11 +229,6 @@ function isAllowedFileExtension(
 }
 
 
-/*
- * =========================================
- * БЕЗОПАСНОЕ ИМЯ ФАЙЛА
- * =========================================
- */
 function cleanFileName(
   value:
     string
@@ -300,11 +255,6 @@ function cleanFileName(
 }
 
 
-/*
- * =========================================
- * ОШИБКИ ZOD В ФОРМАТ ДЛЯ FRONTEND
- * =========================================
- */
 function buildFieldErrors(
   issues: Array<{
     path:
@@ -350,11 +300,6 @@ function buildFieldErrors(
 }
 
 
-/*
- * =========================================
- * ДАТА YYYY-MM-DD → DATE
- * =========================================
- */
 function parseDateOnly(
   value:
     string
@@ -396,11 +341,6 @@ function parseDateOnly(
 }
 
 
-/*
- * =========================================
- * ТЕКУЩИЙ ГОД ПО МОСКВЕ
- * =========================================
- */
 function getMoscowYear() {
   const formatted =
     new Intl.DateTimeFormat(
@@ -422,17 +362,6 @@ function getMoscowYear() {
 }
 
 
-/*
- * =========================================
- * ГЕНЕРАЦИЯ НОМЕРА ЗАЯВКИ
- * =========================================
- *
- * Используем отдельный счётчик в БД:
- *
- * TR-2026-000001
- * TR-2026-000002
- * ...
- */
 async function createRequestNumber() {
   const year =
     getMoscowYear();
@@ -469,20 +398,10 @@ async function createRequestNumber() {
 }
 
 
-/*
- * =========================================
- * ОСНОВНОЙ POST ENDPOINT
- * =========================================
- */
 export async function POST(
   request:
     NextRequest
 ) {
-  /*
-   * -----------------------------------------
-   * 1. АВТОРИЗАЦИЯ
-   * -----------------------------------------
-   */
   const user =
     await getCurrentUser();
 
@@ -494,11 +413,6 @@ export async function POST(
   }
 
 
-  /*
-   * -----------------------------------------
-   * 2. RATE LIMIT
-   * -----------------------------------------
-   */
   const clientIp =
     getClientIp(
       request
@@ -516,11 +430,6 @@ export async function POST(
   }
 
 
-  /*
-   * -----------------------------------------
-   * 3. ЧИТАЕМ FORMDATA
-   * -----------------------------------------
-   */
   let formData:
     FormData;
 
@@ -535,16 +444,17 @@ export async function POST(
   }
 
 
-  /*
-   * -----------------------------------------
-   * 4. СОБИРАЕМ ТЕКСТОВЫЕ ПОЛЯ
-   * -----------------------------------------
-   */
   const rawData = {
     managerEmail:
       getText(
         formData,
         'managerEmail'
+      ),
+
+    customer:
+      getText(
+        formData,
+        'customer'
       ),
 
     loadingDate:
@@ -666,11 +576,6 @@ export async function POST(
   };
 
 
-  /*
-   * -----------------------------------------
-   * 5. СЕРВЕРНАЯ ZOD-ВАЛИДАЦИЯ
-   * -----------------------------------------
-   */
   const parsed =
     transportRequestSchema
       .safeParse(
@@ -702,11 +607,6 @@ export async function POST(
     parsed.data;
 
 
-  /*
-   * -----------------------------------------
-   * 6. ПРОВЕРЯЕМ ФАЙЛ
-   * -----------------------------------------
-   */
   const invoiceEntry =
     formData.get(
       'invoiceFile'
@@ -770,11 +670,6 @@ export async function POST(
     );
 
 
-  /*
-   * -----------------------------------------
-   * 7. ПРОВЕРЯЕМ ПРЕДПОЧТИТЕЛЬНЫЙ ТРАНСПОРТ
-   * -----------------------------------------
-   */
   let preferredVehicle:
     {
       id:
@@ -825,11 +720,6 @@ export async function POST(
   }
 
 
-  /*
-   * -----------------------------------------
-   * 8. ПРЕОБРАЗУЕМ ЧИСЛА
-   * -----------------------------------------
-   */
   const totalWeight =
     normalizeDecimalValue(
       data.totalWeight
@@ -854,11 +744,6 @@ export async function POST(
     );
 
 
-  /*
-   * -----------------------------------------
-   * 9. СОЗДАЁМ НОМЕР
-   * -----------------------------------------
-   */
   let requestNumber:
     string;
 
@@ -880,11 +765,6 @@ export async function POST(
   }
 
 
-  /*
-   * -----------------------------------------
-   * 10. СОХРАНЯЕМ ЗАЯВКУ В БД
-   * -----------------------------------------
-   */
   let savedRequest:
     {
       id:
@@ -907,6 +787,9 @@ export async function POST(
 
             managerEmail:
               data.managerEmail,
+
+            customer:
+              data.customer,
 
             loadingDate,
 
@@ -1011,11 +894,6 @@ export async function POST(
   }
 
 
-  /*
-   * -----------------------------------------
-   * 11. ОТПРАВЛЯЕМ ТЕКСТ В TELEGRAM
-   * -----------------------------------------
-   */
   let telegramMessageId:
     string |
     null =
@@ -1031,6 +909,9 @@ export async function POST(
 
         managerEmail:
           data.managerEmail,
+
+        customer:
+          data.customer,
 
         loadingDate,
 
@@ -1153,17 +1034,12 @@ export async function POST(
       );
 
     return errorResponse(
-      'Заявка сохранена, но не удалось передать её ответственному менеджеру. Попробуйте отправить заявку ещё раз или обратитесь к администратору.',
+      'Заявка сохранена, но не удалось передать её логисту. Попробуйте отправить заявку ещё раз или обратитесь к администратору.',
       502
     );
   }
 
 
-  /*
-   * -----------------------------------------
-   * 12. ОТПРАВЛЯЕМ СЧЁТ В TELEGRAM
-   * -----------------------------------------
-   */
   try {
     await sendTransportRequestInvoiceToTelegram({
       requestNumber,
@@ -1246,11 +1122,6 @@ export async function POST(
   }
 
 
-  /*
-   * -----------------------------------------
-   * 13. УСПЕХ
-   * -----------------------------------------
-   */
   return NextResponse.json(
     {
       success:

@@ -3,12 +3,6 @@ import {
 } from 'zod';
 
 
-/*
- * =========================================
- * НАСТРОЙКИ ФАЙЛА
- * =========================================
- */
-
 export const MAX_INVOICE_FILE_SIZE =
   10 * 1024 * 1024;
 
@@ -21,12 +15,6 @@ export const ALLOWED_INVOICE_MIME_TYPES =
     'image/webp',
   ] as const;
 
-
-/*
- * =========================================
- * ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
- * =========================================
- */
 
 function emptyToUndefined(
   value:
@@ -87,17 +75,6 @@ function requiredText(
 }
 
 
-/*
- * =========================================
- * ДЕСЯТИЧНЫЕ ЧИСЛА
- * =========================================
- *
- * Поддерживаются оба варианта:
- *
- * 1,5
- * 1.5
- */
-
 export function normalizeDecimalValue(
   value:
     string
@@ -143,24 +120,10 @@ function isPositiveDecimal(
       number
     ) &&
     number >
-      0
+    0
   );
 }
 
-
-/*
- * =========================================
- * ТЕЛЕФОН
- * =========================================
- *
- * Маска намеренно не слишком строгая.
- *
- * Разрешаем, например:
- *
- * +7 999 123-45-67
- * 8 999 123-45-67
- * +79991234567
- */
 
 function isValidPhone(
   value:
@@ -185,23 +148,12 @@ function isValidPhone(
 
   return (
     digits.length >=
-      10 &&
+    10 &&
     digits.length <=
-      15
+    15
   );
 }
 
-
-/*
- * =========================================
- * ВРЕМЯ
- * =========================================
- *
- * Формат:
- *
- * 09:00
- * 17:30
- */
 
 function isValidTime(
   value:
@@ -212,12 +164,6 @@ function isValidTime(
   );
 }
 
-
-/*
- * =========================================
- * ДАТА
- * =========================================
- */
 
 function parseDateParts(
   value:
@@ -365,12 +311,6 @@ function isValidLoadingDate(
 }
 
 
-/*
- * =========================================
- * ЯНДЕКС КАРТЫ
- * =========================================
- */
-
 function isYandexMapsUrl(
   value:
     string
@@ -451,12 +391,6 @@ function isYandexMapsUrl(
 }
 
 
-/*
- * =========================================
- * ОСНОВНАЯ СХЕМА ЗАЯВКИ
- * =========================================
- */
-
 export const transportRequestSchema =
   z
     .object({
@@ -475,6 +409,12 @@ export const transportRequestSchema =
             254,
             'Почта менеджера слишком длинная.'
           ),
+
+      customer:
+        requiredText(
+          'Укажите заказчика.',
+          300
+        ),
 
       loadingDate:
         z
@@ -729,11 +669,6 @@ export const transportRequestSchema =
         data,
         ctx
       ) => {
-        /*
-         * Погрузка:
-         * должен быть адрес
-         * ИЛИ ссылка Яндекс Карт.
-         */
         if (
           !data.loadingAddress &&
           !data.loadingMapUrl
@@ -764,12 +699,6 @@ export const transportRequestSchema =
           });
         }
 
-
-        /*
-         * Выгрузка:
-         * должен быть адрес
-         * ИЛИ ссылка Яндекс Карт.
-         */
         if (
           !data.unloadingAddress &&
           !data.unloadingMapUrl
@@ -800,14 +729,6 @@ export const transportRequestSchema =
           });
         }
 
-
-        /*
-         * Honeypot.
-         *
-         * Обычный пользователь
-         * это скрытое поле
-         * никогда не заполняет.
-         */
         if (
           data.honeypot
         ) {
@@ -832,12 +753,6 @@ export type TransportRequestFormData =
     typeof transportRequestSchema
   >;
 
-
-/*
- * =========================================
- * ВАЛИДАЦИЯ СЧЁТА
- * =========================================
- */
 
 export type InvoiceFileValidationResult =
   | {
@@ -868,7 +783,6 @@ export function validateInvoiceFile(
     };
   }
 
-
   if (
     file.size <=
     0
@@ -881,7 +795,6 @@ export function validateInvoiceFile(
         'Прикреплённый файл пустой. Выберите другой файл.',
     };
   }
-
 
   if (
     file.size >
@@ -896,11 +809,9 @@ export function validateInvoiceFile(
     };
   }
 
-
   const allowedMimeTypes:
     readonly string[] =
       ALLOWED_INVOICE_MIME_TYPES;
-
 
   if (
     !allowedMimeTypes.includes(
@@ -915,7 +826,6 @@ export function validateInvoiceFile(
         'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
     };
   }
-
 
   return {
     success:

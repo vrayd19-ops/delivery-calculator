@@ -5,6 +5,8 @@ type TelegramTransportRequestData = {
 
   managerEmail: string;
 
+  customer: string;
+
   loadingDate: Date;
 
   desiredPickupTime?:
@@ -58,6 +60,7 @@ type TelegramTransportRequestData = {
     | null;
 };
 
+
 type TelegramSendMessageResponse = {
   ok: boolean;
 
@@ -67,6 +70,7 @@ type TelegramSendMessageResponse = {
 
   description?: string;
 };
+
 
 function requireTelegramEnv(
   name:
@@ -84,6 +88,7 @@ function requireTelegramEnv(
 
   return value;
 }
+
 
 function formatDate(
   value: Date
@@ -108,6 +113,7 @@ function formatDate(
   );
 }
 
+
 function formatTime(
   value: Date
 ) {
@@ -131,6 +137,7 @@ function formatTime(
   );
 }
 
+
 function yesNo(
   value: boolean
 ) {
@@ -138,6 +145,7 @@ function yesNo(
     ? 'Да'
     : 'Нет';
 }
+
 
 function cleanText(
   value:
@@ -149,13 +157,16 @@ function cleanText(
     return '';
   }
 
-  return String(value)
+  return String(
+    value
+  )
     .replace(
       /\u0000/g,
       ''
     )
     .trim();
 }
+
 
 export function buildTransportRequestTelegramMessage(
   data:
@@ -164,11 +175,13 @@ export function buildTransportRequestTelegramMessage(
   const lines:
     string[] = [];
 
+
   lines.push(
     '🚚 НОВАЯ ЗАЯВКА НА ТРАНСПОРТ'
   );
 
   lines.push('');
+
 
   lines.push(
     `Заявка: ${cleanText(
@@ -188,6 +201,7 @@ export function buildTransportRequestTelegramMessage(
     )}`
   );
 
+
   lines.push('');
 
   lines.push(
@@ -199,6 +213,20 @@ export function buildTransportRequestTelegramMessage(
       data.managerEmail
     )}`
   );
+
+
+  lines.push('');
+
+  lines.push(
+    '🏢 ЗАКАЗЧИК'
+  );
+
+  lines.push(
+    `Заказчик: ${cleanText(
+      data.customer
+    )}`
+  );
+
 
   lines.push('');
 
@@ -212,6 +240,7 @@ export function buildTransportRequestTelegramMessage(
     )}`
   );
 
+
   if (
     data.desiredPickupTime
   ) {
@@ -221,6 +250,7 @@ export function buildTransportRequestTelegramMessage(
       )}`
     );
   }
+
 
   if (
     data.preferredVehicleName
@@ -235,6 +265,7 @@ export function buildTransportRequestTelegramMessage(
       'Предпочтительный транспорт: подобрать логисту'
     );
   }
+
 
   lines.push('');
 
@@ -262,11 +293,13 @@ export function buildTransportRequestTelegramMessage(
     )}`
   );
 
+
   lines.push('');
 
   lines.push(
     '📍 ПОГРУЗКА'
   );
+
 
   if (
     data.loadingAddress
@@ -278,6 +311,7 @@ export function buildTransportRequestTelegramMessage(
     );
   }
 
+
   if (
     data.loadingMapUrl
   ) {
@@ -287,6 +321,7 @@ export function buildTransportRequestTelegramMessage(
       )}`
     );
   }
+
 
   lines.push('');
 
@@ -308,11 +343,13 @@ export function buildTransportRequestTelegramMessage(
     )}`
   );
 
+
   lines.push('');
 
   lines.push(
     '🏁 ВЫГРУЗКА'
   );
+
 
   if (
     data.unloadingAddress
@@ -324,6 +361,7 @@ export function buildTransportRequestTelegramMessage(
     );
   }
 
+
   if (
     data.unloadingMapUrl
   ) {
@@ -333,6 +371,7 @@ export function buildTransportRequestTelegramMessage(
       )}`
     );
   }
+
 
   lines.push('');
 
@@ -354,6 +393,7 @@ export function buildTransportRequestTelegramMessage(
     )}`
   );
 
+
   lines.push('');
 
   lines.push(
@@ -369,6 +409,7 @@ export function buildTransportRequestTelegramMessage(
       data.invoiceFileName
     )}`
   );
+
 
   if (
     data.comment
@@ -386,10 +427,12 @@ export function buildTransportRequestTelegramMessage(
     );
   }
 
+
   return lines.join(
     '\n'
   );
 }
+
 
 export async function sendTransportRequestTextToTelegram(
   data:
@@ -409,6 +452,7 @@ export async function sendTransportRequestTextToTelegram(
     buildTransportRequestTelegramMessage(
       data
     );
+
 
   const response =
     await fetch(
@@ -439,9 +483,11 @@ export async function sendTransportRequestTextToTelegram(
       }
     );
 
+
   const result =
     await response.json() as
       TelegramSendMessageResponse;
+
 
   if (
     !response.ok ||
@@ -455,9 +501,11 @@ export async function sendTransportRequestTextToTelegram(
     );
   }
 
+
   const messageId =
     result.result
       ?.message_id;
+
 
   return {
     messageId:
@@ -468,6 +516,7 @@ export async function sendTransportRequestTextToTelegram(
         : null,
   };
 }
+
 
 export async function sendTransportRequestInvoiceToTelegram(
   input: {
@@ -488,13 +537,16 @@ export async function sendTransportRequestInvoiceToTelegram(
       'TELEGRAM_CHAT_ID'
     );
 
+
   const formData =
     new FormData();
+
 
   formData.set(
     'chat_id',
     chatId
   );
+
 
   formData.set(
     'caption',
@@ -503,11 +555,13 @@ export async function sendTransportRequestInvoiceToTelegram(
     )}`
   );
 
+
   formData.set(
     'document',
     input.file,
     input.file.name
   );
+
 
   const response =
     await fetch(
@@ -524,9 +578,11 @@ export async function sendTransportRequestInvoiceToTelegram(
       }
     );
 
+
   const result =
     await response.json() as
       TelegramSendMessageResponse;
+
 
   if (
     !response.ok ||
@@ -539,6 +595,7 @@ export async function sendTransportRequestInvoiceToTelegram(
       }`
     );
   }
+
 
   return {
     success:
