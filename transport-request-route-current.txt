@@ -1,0 +1,1266 @@
+﻿import {
+  NextRequest,
+  NextResponse,
+} from 'next/server';
+
+import {
+  prisma,
+} from '@/lib/db';
+
+import {
+  getCurrentUser,
+} from '@/lib/auth';
+
+import {
+  normalizeDecimalValue,
+  transportRequestSchema,
+  validateInvoiceFile,
+} from '@/lib/transport-request/validation';
+
+import {
+  sendTransportRequestInvoiceToTelegram,
+  sendTransportRequestTextToTelegram,
+} from '@/lib/telegram/transportRequestTelegram';
+
+
+export const runtime =
+  'nodejs';
+
+export const dynamic =
+  'force-dynamic';
+
+
+/*
+ * =========================================
+ * РџР РћРЎРўРђРЇ Р—РђР©РРўРђ РћРў Р§РђРЎРўР«РҐ РџРћР’РўРћР РћР’
+ * =========================================
+ *
+ * Р­С‚Рѕ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ Р·Р°С‰РёС‚Р° РїРѕРІРµСЂС…:
+ *
+ * - РѕР±СЏР·Р°С‚РµР»СЊРЅРѕР№ Р°РІС‚РѕСЂРёР·Р°С†РёРё;
+ * - honeypot;
+ * - Р±Р»РѕРєРёСЂРѕРІРєРё РєРЅРѕРїРєРё РЅР° frontend.
+ *
+ * Р”Р»СЏ РѕРґРЅРѕРіРѕ СЌРєР·РµРјРїР»СЏСЂР° СЃРµСЂРІРµСЂР°
+ * РѕРіСЂР°РЅРёС‡РёРІР°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїСЂРѕСЃРѕРІ
+ * РѕС‚ РѕРґРЅРѕРіРѕ IP.
+ */
+const RATE_LIMIT_WINDOW_MS =
+  10 * 60 * 1000;
+
+const RATE_LIMIT_MAX_REQUESTS =
+  8;
+
+type RateLimitEntry = {
+  count: number;
+  resetAt: number;
+};
+
+const globalForRateLimit =
+  globalThis as typeof globalThis & {
+    transportRequestRateLimit?:
+      Map<
+        string,
+        RateLimitEntry
+      >;
+  };
+
+const rateLimitStore =
+  globalForRateLimit
+    .transportRequestRateLimit ??
+  new Map<
+    string,
+    RateLimitEntry
+  >();
+
+if (
+  process.env.NODE_ENV !==
+  'production'
+) {
+  globalForRateLimit
+    .transportRequestRateLimit =
+    rateLimitStore;
+}
+
+
+/*
+ * =========================================
+ * Р‘Р•Р—РћРџРђРЎРќР«Р™ JSON-РћРўР’Р•Рў
+ * =========================================
+ */
+function errorResponse(
+  message: string,
+  status = 400,
+  fieldErrors?:
+    Record<
+      string,
+      string
+    >
+) {
+  return NextResponse.json(
+    {
+      success:
+        false,
+
+      message,
+
+      ...(fieldErrors
+        ? {
+            fieldErrors,
+          }
+        : {}),
+    },
+    {
+      status,
+    }
+  );
+}
+
+
+/*
+ * =========================================
+ * IP РџРћР›Р¬Р—РћР’РђРўР•Р›РЇ
+ * =========================================
+ */
+function getClientIp(
+  request:
+    NextRequest
+) {
+  const forwarded =
+    request.headers.get(
+      'x-forwarded-for'
+    );
+
+  if (forwarded) {
+    return (
+      forwarded
+        .split(',')[0]
+        ?.trim() ||
+      'unknown'
+    );
+  }
+
+  const realIp =
+    request.headers.get(
+      'x-real-ip'
+    );
+
+  return (
+    realIp?.trim() ||
+    'unknown'
+  );
+}
+
+
+/*
+ * =========================================
+ * RATE LIMIT
+ * =========================================
+ */
+function isRateLimited(
+  ip: string
+) {
+  const now =
+    Date.now();
+
+  const existing =
+    rateLimitStore.get(
+      ip
+    );
+
+  if (
+    !existing ||
+    existing.resetAt <=
+      now
+  ) {
+    rateLimitStore.set(
+      ip,
+      {
+        count:
+          1,
+
+        resetAt:
+          now +
+          RATE_LIMIT_WINDOW_MS,
+      }
+    );
+
+    return false;
+  }
+
+  if (
+    existing.count >=
+    RATE_LIMIT_MAX_REQUESTS
+  ) {
+    return true;
+  }
+
+  existing.count +=
+    1;
+
+  rateLimitStore.set(
+    ip,
+    existing
+  );
+
+  return false;
+}
+
+
+/*
+ * =========================================
+ * РџРћР›РЈР§Р•РќРР• РЎРўР РћРљР РР— FORMDATA
+ * =========================================
+ */
+function getText(
+  formData:
+    FormData,
+
+  name:
+    string
+) {
+  const value =
+    formData.get(
+      name
+    );
+
+  if (
+    typeof value !==
+    'string'
+  ) {
+    return '';
+  }
+
+  return value.trim();
+}
+
+
+/*
+ * =========================================
+ * РџР РћР’Р•Р РљРђ Р РђРЎРЁРР Р•РќРРЇ Р¤РђР™Р›Рђ
+ * =========================================
+ */
+function isAllowedFileExtension(
+  fileName:
+    string
+) {
+  const normalized =
+    fileName
+      .trim()
+      .toLowerCase();
+
+  return (
+    normalized.endsWith(
+      '.pdf'
+    ) ||
+    normalized.endsWith(
+      '.jpg'
+    ) ||
+    normalized.endsWith(
+      '.jpeg'
+    ) ||
+    normalized.endsWith(
+      '.png'
+    ) ||
+    normalized.endsWith(
+      '.webp'
+    )
+  );
+}
+
+
+/*
+ * =========================================
+ * Р‘Р•Р—РћРџРђРЎРќРћР• РРњРЇ Р¤РђР™Р›Рђ
+ * =========================================
+ */
+function cleanFileName(
+  value:
+    string
+) {
+  const cleaned =
+    value
+      .replace(
+        /[\u0000-\u001f\u007f]/g,
+        ''
+      )
+      .replace(
+        /[\\/]/g,
+        '_'
+      )
+      .trim();
+
+  return (
+    cleaned ||
+    'invoice'
+  ).slice(
+    0,
+    240
+  );
+}
+
+
+/*
+ * =========================================
+ * РћРЁРР‘РљР ZOD Р’ Р¤РћР РњРђРў Р”Р›РЇ FRONTEND
+ * =========================================
+ */
+function buildFieldErrors(
+  issues: Array<{
+    path:
+      PropertyKey[];
+
+    message:
+      string;
+  }>
+) {
+  const fieldErrors:
+    Record<
+      string,
+      string
+    > = {};
+
+  for (
+    const issue
+    of issues
+  ) {
+    const firstPath =
+      issue.path[0];
+
+    if (
+      typeof firstPath !==
+      'string'
+    ) {
+      continue;
+    }
+
+    if (
+      !fieldErrors[
+        firstPath
+      ]
+    ) {
+      fieldErrors[
+        firstPath
+      ] =
+        issue.message;
+    }
+  }
+
+  return fieldErrors;
+}
+
+
+/*
+ * =========================================
+ * Р”РђРўРђ YYYY-MM-DD в†’ DATE
+ * =========================================
+ */
+function parseDateOnly(
+  value:
+    string
+) {
+  const [
+    yearText,
+    monthText,
+    dayText,
+  ] =
+    value.split(
+      '-'
+    );
+
+  const year =
+    Number(
+      yearText
+    );
+
+  const month =
+    Number(
+      monthText
+    );
+
+  const day =
+    Number(
+      dayText
+    );
+
+  return new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      12,
+      0,
+      0
+    )
+  );
+}
+
+
+/*
+ * =========================================
+ * РўР•РљРЈР©РР™ Р“РћР” РџРћ РњРћРЎРљР’Р•
+ * =========================================
+ */
+function getMoscowYear() {
+  const formatted =
+    new Intl.DateTimeFormat(
+      'en-US',
+      {
+        year:
+          'numeric',
+
+        timeZone:
+          'Europe/Moscow',
+      }
+    ).format(
+      new Date()
+    );
+
+  return Number(
+    formatted
+  );
+}
+
+
+/*
+ * =========================================
+ * Р“Р•РќР•Р РђР¦РРЇ РќРћРњР•Р Рђ Р—РђРЇР’РљР
+ * =========================================
+ *
+ * РСЃРїРѕР»СЊР·СѓРµРј РѕС‚РґРµР»СЊРЅС‹Р№ СЃС‡С‘С‚С‡РёРє РІ Р‘Р”:
+ *
+ * TR-2026-000001
+ * TR-2026-000002
+ * ...
+ */
+async function createRequestNumber() {
+  const year =
+    getMoscowYear();
+
+  const counter =
+    await prisma
+      .transportRequestCounter
+      .upsert({
+        where: {
+          year,
+        },
+
+        create: {
+          year,
+
+          value:
+            1,
+        },
+
+        update: {
+          value: {
+            increment:
+              1,
+          },
+        },
+      });
+
+  return `TR-${year}-${String(
+    counter.value
+  ).padStart(
+    6,
+    '0'
+  )}`;
+}
+
+
+/*
+ * =========================================
+ * РћРЎРќРћР’РќРћР™ POST ENDPOINT
+ * =========================================
+ */
+export async function POST(
+  request:
+    NextRequest
+) {
+  /*
+   * -----------------------------------------
+   * 1. РђР’РўРћР РР—РђР¦РРЇ
+   * -----------------------------------------
+   */
+  const user =
+    await getCurrentUser();
+
+  if (!user) {
+    return errorResponse(
+      'РќРµРѕР±С…РѕРґРёРјРѕ РІРѕР№С‚Рё РІ СЃРёСЃС‚РµРјСѓ.',
+      401
+    );
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 2. RATE LIMIT
+   * -----------------------------------------
+   */
+  const clientIp =
+    getClientIp(
+      request
+    );
+
+  if (
+    isRateLimited(
+      clientIp
+    )
+  ) {
+    return errorResponse(
+      'РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ РїРѕРїС‹С‚РѕРє РѕС‚РїСЂР°РІРєРё. РџРѕРґРѕР¶РґРёС‚Рµ РЅРµСЃРєРѕР»СЊРєРѕ РјРёРЅСѓС‚ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.',
+      429
+    );
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 3. Р§РРўРђР•Рњ FORMDATA
+   * -----------------------------------------
+   */
+  let formData:
+    FormData;
+
+  try {
+    formData =
+      await request.formData();
+  } catch {
+    return errorResponse(
+      'РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ РґР°РЅРЅС‹Рµ Р·Р°СЏРІРєРё.',
+      400
+    );
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 4. РЎРћР‘РР РђР•Рњ РўР•РљРЎРўРћР’Р«Р• РџРћР›РЇ
+   * -----------------------------------------
+   */
+  const rawData = {
+    managerEmail:
+      getText(
+        formData,
+        'managerEmail'
+      ),
+
+    loadingDate:
+      getText(
+        formData,
+        'loadingDate'
+      ),
+
+    desiredPickupTime:
+      getText(
+        formData,
+        'desiredPickupTime'
+      ),
+
+    preferredVehicleTypeId:
+      getText(
+        formData,
+        'preferredVehicleTypeId'
+      ),
+
+    totalWeight:
+      getText(
+        formData,
+        'totalWeight'
+      ),
+
+    cargoLength:
+      getText(
+        formData,
+        'cargoLength'
+      ),
+
+    needsStakes:
+      getText(
+        formData,
+        'needsStakes'
+      ),
+
+    logisticsFitCheck:
+      getText(
+        formData,
+        'logisticsFitCheck'
+      ) ===
+      'yes'
+        ? 'yes'
+        : 'no',
+
+    loadingAddress:
+      getText(
+        formData,
+        'loadingAddress'
+      ),
+
+    loadingMapUrl:
+      getText(
+        formData,
+        'loadingMapUrl'
+      ),
+
+    loadingContactName:
+      getText(
+        formData,
+        'loadingContactName'
+      ),
+
+    loadingContactPhone:
+      getText(
+        formData,
+        'loadingContactPhone'
+      ),
+
+    loadingUntil:
+      getText(
+        formData,
+        'loadingUntil'
+      ),
+
+    unloadingAddress:
+      getText(
+        formData,
+        'unloadingAddress'
+      ),
+
+    unloadingMapUrl:
+      getText(
+        formData,
+        'unloadingMapUrl'
+      ),
+
+    unloadingContactName:
+      getText(
+        formData,
+        'unloadingContactName'
+      ),
+
+    unloadingContactPhone:
+      getText(
+        formData,
+        'unloadingContactPhone'
+      ),
+
+    unloadingUntil:
+      getText(
+        formData,
+        'unloadingUntil'
+      ),
+
+    comment:
+      getText(
+        formData,
+        'comment'
+      ),
+
+    honeypot:
+      getText(
+        formData,
+        'website'
+      ),
+  };
+
+
+  /*
+   * -----------------------------------------
+   * 5. РЎР•Р Р’Р•Р РќРђРЇ ZOD-Р’РђР›РР”РђР¦РРЇ
+   * -----------------------------------------
+   */
+  const parsed =
+    transportRequestSchema
+      .safeParse(
+        rawData
+      );
+
+  if (
+    !parsed.success
+  ) {
+    const fieldErrors =
+      buildFieldErrors(
+        parsed.error.issues
+      );
+
+    const firstMessage =
+      parsed.error
+        .issues[0]
+        ?.message ||
+      'РџСЂРѕРІРµСЂСЊС‚Рµ Р·Р°РїРѕР»РЅРµРЅРЅС‹Рµ РґР°РЅРЅС‹Рµ.';
+
+    return errorResponse(
+      firstMessage,
+      400,
+      fieldErrors
+    );
+  }
+
+  const data =
+    parsed.data;
+
+
+  /*
+   * -----------------------------------------
+   * 6. РџР РћР’Р•Р РЇР•Рњ Р¤РђР™Р›
+   * -----------------------------------------
+   */
+  const invoiceEntry =
+    formData.get(
+      'invoiceFile'
+    );
+
+  const invoiceFile =
+    invoiceEntry instanceof
+      File
+      ? invoiceEntry
+      : null;
+
+  const fileValidation =
+    validateInvoiceFile(
+      invoiceFile
+    );
+
+  if (
+    !fileValidation.success
+  ) {
+    return errorResponse(
+      fileValidation.message,
+      400,
+      {
+        invoiceFile:
+          fileValidation.message,
+      }
+    );
+  }
+
+  if (
+    !invoiceFile
+  ) {
+    return errorResponse(
+      'РџСЂРёРєСЂРµРїРёС‚Рµ С„РѕС‚Рѕ РёР»Рё PDF СЃС‡С‘С‚Р° РЅР° РїРѕРіСЂСѓР·РєСѓ.',
+      400,
+      {
+        invoiceFile:
+          'РџСЂРёРєСЂРµРїРёС‚Рµ С„РѕС‚Рѕ РёР»Рё PDF СЃС‡С‘С‚Р° РЅР° РїРѕРіСЂСѓР·РєСѓ.',
+      }
+    );
+  }
+
+  if (
+    !isAllowedFileExtension(
+      invoiceFile.name
+    )
+  ) {
+    return errorResponse(
+      'Р”РѕРїСѓСЃС‚РёРјС‹ С‚РѕР»СЊРєРѕ PDF, JPG, JPEG, PNG РёР»Рё WEBP.',
+      400,
+      {
+        invoiceFile:
+          'Р”РѕРїСѓСЃС‚РёРјС‹ С‚РѕР»СЊРєРѕ PDF, JPG, JPEG, PNG РёР»Рё WEBP.',
+      }
+    );
+  }
+
+  const invoiceFileName =
+    cleanFileName(
+      invoiceFile.name
+    );
+
+
+  /*
+   * -----------------------------------------
+   * 7. РџР РћР’Р•Р РЇР•Рњ РџР Р•Р”РџРћР§РўРРўР•Р›Р¬РќР«Р™ РўР РђРќРЎРџРћР Рў
+   * -----------------------------------------
+   */
+  let preferredVehicle:
+    {
+      id:
+        string;
+
+      name:
+        string;
+    } |
+    null =
+      null;
+
+  if (
+    data.preferredVehicleTypeId
+  ) {
+    preferredVehicle =
+      await prisma
+        .vehicleType
+        .findFirst({
+          where: {
+            id:
+              data.preferredVehicleTypeId,
+
+            isActive:
+              true,
+          },
+
+          select: {
+            id:
+              true,
+
+            name:
+              true,
+          },
+        });
+
+    if (
+      !preferredVehicle
+    ) {
+      return errorResponse(
+        'Р’С‹Р±СЂР°РЅРЅС‹Р№ С‚СЂР°РЅСЃРїРѕСЂС‚ Р±РѕР»СЊС€Рµ РЅРµРґРѕСЃС‚СѓРїРµРЅ. Р’С‹Р±РµСЂРёС‚Рµ РґСЂСѓРіРѕР№ РІР°СЂРёР°РЅС‚.',
+        400,
+        {
+          preferredVehicleTypeId:
+            'Р’С‹Р±СЂР°РЅРЅС‹Р№ С‚СЂР°РЅСЃРїРѕСЂС‚ Р±РѕР»СЊС€Рµ РЅРµРґРѕСЃС‚СѓРїРµРЅ.',
+        }
+      );
+    }
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 8. РџР Р•РћР‘Р РђР—РЈР•Рњ Р§РРЎР›Рђ
+   * -----------------------------------------
+   */
+  const totalWeight =
+    normalizeDecimalValue(
+      data.totalWeight
+    );
+
+  const cargoLength =
+    normalizeDecimalValue(
+      data.cargoLength
+    );
+
+  const needsStakes =
+    data.needsStakes ===
+    'yes';
+
+  const logisticsFitCheck =
+    data.logisticsFitCheck ===
+    'yes';
+
+  const loadingDate =
+    parseDateOnly(
+      data.loadingDate
+    );
+
+
+  /*
+   * -----------------------------------------
+   * 9. РЎРћР—Р”РђРЃРњ РќРћРњР•Р 
+   * -----------------------------------------
+   */
+  let requestNumber:
+    string;
+
+  try {
+    requestNumber =
+      await createRequestNumber();
+  } catch (
+    error
+  ) {
+    console.error(
+      'TRANSPORT REQUEST NUMBER ERROR:',
+      error
+    );
+
+    return errorResponse(
+      'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РЅРѕРјРµСЂ Р·Р°СЏРІРєРё. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.',
+      500
+    );
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 10. РЎРћРҐР РђРќРЇР•Рњ Р—РђРЇР’РљРЈ Р’ Р‘Р”
+   * -----------------------------------------
+   */
+  let savedRequest:
+    {
+      id:
+        string;
+
+      createdAt:
+        Date;
+    };
+
+  try {
+    savedRequest =
+      await prisma
+        .transportRequest
+        .create({
+          data: {
+            requestNumber,
+
+            createdByUserId:
+              user.id,
+
+            managerEmail:
+              data.managerEmail,
+
+            loadingDate,
+
+            desiredPickupTime:
+              data.desiredPickupTime ??
+              null,
+
+            preferredVehicleTypeId:
+              preferredVehicle
+                ?.id ??
+              null,
+
+            preferredVehicleName:
+              preferredVehicle
+                ?.name ??
+              null,
+
+            totalWeight,
+
+            cargoLength,
+
+            needsStakes,
+
+            logisticsFitCheck,
+
+            loadingAddress:
+              data.loadingAddress ??
+              null,
+
+            loadingMapUrl:
+              data.loadingMapUrl ??
+              null,
+
+            loadingContactName:
+              data.loadingContactName,
+
+            loadingContactPhone:
+              data.loadingContactPhone,
+
+            loadingUntil:
+              data.loadingUntil,
+
+            unloadingAddress:
+              data.unloadingAddress ??
+              null,
+
+            unloadingMapUrl:
+              data.unloadingMapUrl ??
+              null,
+
+            unloadingContactName:
+              data.unloadingContactName,
+
+            unloadingContactPhone:
+              data.unloadingContactPhone,
+
+            unloadingUntil:
+              data.unloadingUntil,
+
+            invoiceFileName,
+
+            invoiceFileType:
+              invoiceFile.type,
+
+            invoiceFileSize:
+              invoiceFile.size,
+
+            comment:
+              data.comment ??
+              null,
+
+            telegramTextSent:
+              false,
+
+            telegramFileSent:
+              false,
+
+            telegramSent:
+              false,
+          },
+
+          select: {
+            id:
+              true,
+
+            createdAt:
+              true,
+          },
+        });
+  } catch (
+    error
+  ) {
+    console.error(
+      'TRANSPORT REQUEST DATABASE ERROR:',
+      error
+    );
+
+    return errorResponse(
+      'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ Р·Р°СЏРІРєСѓ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.',
+      500
+    );
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 11. РћРўРџР РђР’Р›РЇР•Рњ РўР•РљРЎРў Р’ TELEGRAM
+   * -----------------------------------------
+   */
+  let telegramMessageId:
+    string |
+    null =
+      null;
+
+  try {
+    const telegramResult =
+      await sendTransportRequestTextToTelegram({
+        requestNumber,
+
+        createdAt:
+          savedRequest.createdAt,
+
+        managerEmail:
+          data.managerEmail,
+
+        loadingDate,
+
+        desiredPickupTime:
+          data.desiredPickupTime ??
+          null,
+
+        preferredVehicleName:
+          preferredVehicle
+            ?.name ??
+          null,
+
+        totalWeight,
+
+        cargoLength,
+
+        needsStakes,
+
+        logisticsFitCheck,
+
+        loadingAddress:
+          data.loadingAddress ??
+          null,
+
+        loadingMapUrl:
+          data.loadingMapUrl ??
+          null,
+
+        loadingContactName:
+          data.loadingContactName,
+
+        loadingContactPhone:
+          data.loadingContactPhone,
+
+        loadingUntil:
+          data.loadingUntil,
+
+        unloadingAddress:
+          data.unloadingAddress ??
+          null,
+
+        unloadingMapUrl:
+          data.unloadingMapUrl ??
+          null,
+
+        unloadingContactName:
+          data.unloadingContactName,
+
+        unloadingContactPhone:
+          data.unloadingContactPhone,
+
+        unloadingUntil:
+          data.unloadingUntil,
+
+        invoiceFileName,
+
+        comment:
+          data.comment ??
+          null,
+      });
+
+    telegramMessageId =
+      telegramResult
+        .messageId;
+
+    await prisma
+      .transportRequest
+      .update({
+        where: {
+          id:
+            savedRequest.id,
+        },
+
+        data: {
+          telegramTextSent:
+            true,
+
+          telegramMessageId,
+        },
+      });
+  } catch (
+    error
+  ) {
+    console.error(
+      'TRANSPORT REQUEST TELEGRAM TEXT ERROR:',
+      error
+    );
+
+    await prisma
+      .transportRequest
+      .update({
+        where: {
+          id:
+            savedRequest.id,
+        },
+
+        data: {
+          telegramTextSent:
+            false,
+
+          telegramFileSent:
+            false,
+
+          telegramSent:
+            false,
+
+          telegramError:
+            'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ С‚РµРєСЃС‚ Р·Р°СЏРІРєРё РІ Telegram.',
+        },
+      })
+      .catch(
+        (
+          updateError
+        ) => {
+          console.error(
+            'TRANSPORT REQUEST STATUS UPDATE ERROR:',
+            updateError
+          );
+        }
+      );
+
+    return errorResponse(
+      'Р—Р°СЏРІРєР° СЃРѕС…СЂР°РЅРµРЅР°, РЅРѕ РЅРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµРґР°С‚СЊ РµС‘ РѕС‚РІРµС‚СЃС‚РІРµРЅРЅРѕРјСѓ РјРµРЅРµРґР¶РµСЂСѓ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РѕС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ РµС‰С‘ СЂР°Р· РёР»Рё РѕР±СЂР°С‚РёС‚РµСЃСЊ Рє Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ.',
+      502
+    );
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 12. РћРўРџР РђР’Р›РЇР•Рњ РЎР§РЃРў Р’ TELEGRAM
+   * -----------------------------------------
+   */
+  try {
+    await sendTransportRequestInvoiceToTelegram({
+      requestNumber,
+
+      file:
+        invoiceFile,
+    });
+
+    await prisma
+      .transportRequest
+      .update({
+        where: {
+          id:
+            savedRequest.id,
+        },
+
+        data: {
+          telegramTextSent:
+            true,
+
+          telegramFileSent:
+            true,
+
+          telegramSent:
+            true,
+
+          telegramMessageId,
+
+          telegramError:
+            null,
+        },
+      });
+  } catch (
+    error
+  ) {
+    console.error(
+      'TRANSPORT REQUEST TELEGRAM FILE ERROR:',
+      error
+    );
+
+    await prisma
+      .transportRequest
+      .update({
+        where: {
+          id:
+            savedRequest.id,
+        },
+
+        data: {
+          telegramTextSent:
+            true,
+
+          telegramFileSent:
+            false,
+
+          telegramSent:
+            false,
+
+          telegramMessageId,
+
+          telegramError:
+            'РўРµРєСЃС‚ Р·Р°СЏРІРєРё РѕС‚РїСЂР°РІР»РµРЅ, РЅРѕ С„Р°Р№Р» СЃС‡С‘С‚Р° РЅРµ РґРѕСЃС‚Р°РІР»РµРЅ РІ Telegram.',
+        },
+      })
+      .catch(
+        (
+          updateError
+        ) => {
+          console.error(
+            'TRANSPORT REQUEST STATUS UPDATE ERROR:',
+            updateError
+          );
+        }
+      );
+
+    return errorResponse(
+      'Р”Р°РЅРЅС‹Рµ Р·Р°СЏРІРєРё СЃРѕС…СЂР°РЅРµРЅС‹, РЅРѕ СЃС‡С‘С‚ РЅРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ РІ Telegram. Р—Р°СЏРІРєР° РЅРµ СЃС‡РёС‚Р°РµС‚СЃСЏ РїРѕР»РЅРѕСЃС‚СЊСЋ РѕС‚РїСЂР°РІР»РµРЅРЅРѕР№.',
+      502
+    );
+  }
+
+
+  /*
+   * -----------------------------------------
+   * 13. РЈРЎРџР•РҐ
+   * -----------------------------------------
+   */
+  return NextResponse.json(
+    {
+      success:
+        true,
+
+      requestNumber,
+    },
+    {
+      status:
+        201,
+    }
+  );
+}

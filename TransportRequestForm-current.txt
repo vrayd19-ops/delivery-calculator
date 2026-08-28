@@ -1,0 +1,3734 @@
+﻿'use client';
+
+import {
+  ChangeEvent,
+  DragEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+
+import {
+  Check,
+  FileText,
+  Image as ImageIcon,
+  LoaderCircle,
+  Paperclip,
+  RotateCcw,
+  Send,
+  Trash2,
+  UploadCloud,
+  X,
+} from 'lucide-react';
+
+import styles
+  from './TransportRequest.module.css';
+
+
+type VehicleOption = {
+  id:
+    string;
+
+  name:
+    string;
+};
+
+
+type Props = {
+  vehicles:
+    VehicleOption[];
+
+  defaultManagerEmail:
+    string;
+};
+
+
+type FieldErrors =
+  Record<
+    string,
+    string
+  >;
+
+
+type FormValues = {
+  managerEmail:
+    string;
+
+  loadingDate:
+    string;
+
+  desiredPickupTime:
+    string;
+
+  preferredVehicleTypeId:
+    string;
+
+  totalWeight:
+    string;
+
+  cargoLength:
+    string;
+
+  needsStakes:
+    '' |
+    'yes' |
+    'no';
+
+  logisticsFitCheck:
+    boolean;
+
+  loadingAddress:
+    string;
+
+  loadingMapUrl:
+    string;
+
+  loadingContactName:
+    string;
+
+  loadingContactPhone:
+    string;
+
+  loadingUntil:
+    string;
+
+  unloadingAddress:
+    string;
+
+  unloadingMapUrl:
+    string;
+
+  unloadingContactName:
+    string;
+
+  unloadingContactPhone:
+    string;
+
+  unloadingUntil:
+    string;
+
+  comment:
+    string;
+};
+
+
+const MAX_FILE_SIZE =
+  4 * 1024 * 1024;
+
+
+const ALLOWED_TYPES =
+  [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+  ];
+
+
+function todayInputValue() {
+  const now =
+    new Date();
+
+  const offset =
+    now.getTimezoneOffset();
+
+  const local =
+    new Date(
+      now.getTime() -
+      offset *
+      60 *
+      1000
+    );
+
+  return local
+    .toISOString()
+    .slice(
+      0,
+      10
+    );
+}
+
+
+function formatFileSize(
+  bytes:
+    number
+) {
+  if (
+    bytes <
+    1024
+  ) {
+    return `${bytes} Р‘`;
+  }
+
+  if (
+    bytes <
+    1024 *
+      1024
+  ) {
+    return `${(
+      bytes /
+      1024
+    ).toFixed(
+      1
+    )} РљР‘`;
+  }
+
+  return `${(
+    bytes /
+    1024 /
+    1024
+  ).toFixed(
+    1
+  )} РњР‘`;
+}
+
+
+function parseDecimal(
+  value:
+    string
+) {
+  return Number(
+    value
+      .trim()
+      .replace(
+        ',',
+        '.'
+      )
+  );
+}
+
+
+function isValidEmail(
+  value:
+    string
+) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    value.trim()
+  );
+}
+
+
+function isValidYandexUrl(
+  value:
+    string
+) {
+  if (!value.trim()) {
+    return true;
+  }
+
+  try {
+    const url =
+      new URL(
+        value.trim()
+      );
+
+    const host =
+      url.hostname
+        .toLowerCase();
+
+    return (
+      host ===
+        'yandex.ru' ||
+      host.endsWith(
+        '.yandex.ru'
+      ) ||
+      host ===
+        'yandex.com' ||
+      host.endsWith(
+        '.yandex.com'
+      ) ||
+      host ===
+        'yandex.by' ||
+      host.endsWith(
+        '.yandex.by'
+      ) ||
+      host ===
+        'yandex.kz' ||
+      host.endsWith(
+        '.yandex.kz'
+      ) ||
+      host ===
+        'yandex.uz' ||
+      host.endsWith(
+        '.yandex.uz'
+      ) ||
+      host ===
+        'yandex.app.link' ||
+      host.endsWith(
+        '.yandex.app.link'
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+
+function fieldClass(
+  error?:
+    string
+) {
+  return error
+    ? `${styles.input} ${styles.inputError}`
+    : styles.input;
+}
+
+
+export default function TransportRequestForm({
+  vehicles,
+  defaultManagerEmail,
+}: Props) {
+  const fileInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
+
+
+  const [
+    values,
+    setValues,
+  ] =
+    useState<FormValues>({
+      managerEmail:
+        defaultManagerEmail,
+
+      loadingDate:
+        '',
+
+      desiredPickupTime:
+        '',
+
+      preferredVehicleTypeId:
+        '',
+
+      totalWeight:
+        '',
+
+      cargoLength:
+        '',
+
+      needsStakes:
+        '',
+
+      logisticsFitCheck:
+        false,
+
+      loadingAddress:
+        '',
+
+      loadingMapUrl:
+        '',
+
+      loadingContactName:
+        '',
+
+      loadingContactPhone:
+        '',
+
+      loadingUntil:
+        '',
+
+      unloadingAddress:
+        '',
+
+      unloadingMapUrl:
+        '',
+
+      unloadingContactName:
+        '',
+
+      unloadingContactPhone:
+        '',
+
+      unloadingUntil:
+        '',
+
+      comment:
+        '',
+    });
+
+
+  const [
+    invoiceFile,
+    setInvoiceFile,
+  ] =
+    useState<File | null>(
+      null
+    );
+
+
+  const [
+    previewUrl,
+    setPreviewUrl,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+
+  const [
+    isDragging,
+    setIsDragging,
+  ] =
+    useState(
+      false
+    );
+
+
+  const [
+    submitting,
+    setSubmitting,
+  ] =
+    useState(
+      false
+    );
+
+
+  const [
+    fieldErrors,
+    setFieldErrors,
+  ] =
+    useState<FieldErrors>(
+      {}
+    );
+
+
+  const [
+    serverError,
+    setServerError,
+  ] =
+    useState(
+      ''
+    );
+
+
+  const [
+    successNumber,
+    setSuccessNumber,
+  ] =
+    useState(
+      ''
+    );
+
+
+  const [
+    showMissingFieldsModal,
+    setShowMissingFieldsModal,
+  ] =
+    useState(
+      false
+    );
+
+
+  const today =
+    useMemo(
+      () =>
+        todayInputValue(),
+      []
+    );
+
+
+  const selectedVehicleName =
+    useMemo(
+      () =>
+        vehicles.find(
+          (
+            vehicle
+          ) =>
+            vehicle.id ===
+            values
+              .preferredVehicleTypeId
+        )?.name ||
+        'РџРѕРґРѕР±СЂР°С‚СЊ Р»РѕРіРёСЃС‚Сѓ',
+      [
+        vehicles,
+        values
+          .preferredVehicleTypeId,
+      ]
+    );
+
+
+  useEffect(
+    () => {
+      if (
+        !invoiceFile ||
+        !invoiceFile.type
+          .startsWith(
+            'image/'
+          )
+      ) {
+        setPreviewUrl(
+          null
+        );
+
+        return;
+      }
+
+      const objectUrl =
+        URL.createObjectURL(
+          invoiceFile
+        );
+
+      setPreviewUrl(
+        objectUrl
+      );
+
+      return () => {
+        URL.revokeObjectURL(
+          objectUrl
+        );
+      };
+    },
+    [
+      invoiceFile,
+    ]
+  );
+
+
+  function clearFieldError(
+    name:
+      string
+  ) {
+    setFieldErrors(
+      (
+        current
+      ) => {
+        if (
+          !current[
+            name
+          ]
+        ) {
+          return current;
+        }
+
+        const next = {
+          ...current,
+        };
+
+        delete next[
+          name
+        ];
+
+        return next;
+      }
+    );
+  }
+
+
+  function updateValue(
+    name:
+      keyof FormValues,
+
+    value:
+      string |
+      boolean
+  ) {
+    setValues(
+      (
+        current
+      ) => ({
+        ...current,
+
+        [name]:
+          value,
+      })
+    );
+
+    clearFieldError(
+      name
+    );
+
+    setServerError(
+      ''
+    );
+  }
+
+
+  function validateFile(
+    file:
+      File
+  ) {
+    if (
+      !ALLOWED_TYPES.includes(
+        file.type
+      )
+    ) {
+      setFieldErrors(
+        (
+          current
+        ) => ({
+          ...current,
+
+          invoiceFile:
+            'Р”РѕРїСѓСЃС‚РёРјС‹ С‚РѕР»СЊРєРѕ PDF, JPG, JPEG, PNG РёР»Рё WEBP.',
+        })
+      );
+
+      return false;
+    }
+
+
+    if (
+      file.size >
+      MAX_FILE_SIZE
+    ) {
+      setFieldErrors(
+        (
+          current
+        ) => ({
+          ...current,
+
+          invoiceFile:
+            'Р”Р»СЏ РѕС‚РїСЂР°РІРєРё С‡РµСЂРµР· С‚РµРєСѓС‰РёР№ СЃРµСЂРІРµСЂ СЂР°Р·РјРµСЂ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РµРЅ РїСЂРµРІС‹С€Р°С‚СЊ 4 РњР‘.',
+        })
+      );
+
+      return false;
+    }
+
+
+    if (
+      file.size <=
+      0
+    ) {
+      setFieldErrors(
+        (
+          current
+        ) => ({
+          ...current,
+
+          invoiceFile:
+            'Р¤Р°Р№Р» РїСѓСЃС‚РѕР№. Р’С‹Р±РµСЂРёС‚Рµ РґСЂСѓРіРѕР№ С„Р°Р№Р».',
+        })
+      );
+
+      return false;
+    }
+
+
+    clearFieldError(
+      'invoiceFile'
+    );
+
+    return true;
+  }
+
+
+  function chooseFile(
+    file:
+      File |
+      undefined
+  ) {
+    if (!file) {
+      return;
+    }
+
+    if (
+      !validateFile(
+        file
+      )
+    ) {
+      return;
+    }
+
+    setInvoiceFile(
+      file
+    );
+
+    setServerError(
+      ''
+    );
+  }
+
+
+  function handleFileInput(
+    event:
+      ChangeEvent<HTMLInputElement>
+  ) {
+    chooseFile(
+      event.target
+        .files?.[0]
+    );
+  }
+
+
+  function handleDrop(
+    event:
+      DragEvent<HTMLDivElement>
+  ) {
+    event.preventDefault();
+
+    setIsDragging(
+      false
+    );
+
+    chooseFile(
+      event.dataTransfer
+        .files?.[0]
+    );
+  }
+
+
+  function removeFile() {
+    setInvoiceFile(
+      null
+    );
+
+    setPreviewUrl(
+      null
+    );
+
+    if (
+      fileInputRef.current
+    ) {
+      fileInputRef.current.value =
+        '';
+    }
+
+    clearFieldError(
+      'invoiceFile'
+    );
+  }
+
+
+  function validateForm() {
+    const errors:
+      FieldErrors = {};
+
+
+    if (
+      !values.managerEmail
+        .trim()
+    ) {
+      errors.managerEmail =
+        'РЈРєР°Р¶РёС‚Рµ РїРѕС‡С‚Сѓ РјРµРЅРµРґР¶РµСЂР°.';
+    } else if (
+      !isValidEmail(
+        values.managerEmail
+      )
+    ) {
+      errors.managerEmail =
+        'РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅС‹Р№ email РјРµРЅРµРґР¶РµСЂР°.';
+    }
+
+
+    if (
+      !values.loadingDate
+    ) {
+      errors.loadingDate =
+        'РЈРєР°Р¶РёС‚Рµ РґР°С‚Сѓ РїРѕРіСЂСѓР·РєРё.';
+    } else if (
+      values.loadingDate <
+      today
+    ) {
+      errors.loadingDate =
+        'Р”Р°С‚Р° РїРѕРіСЂСѓР·РєРё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ СЂР°РЅСЊС€Рµ СЃРµРіРѕРґРЅСЏС€РЅРµРіРѕ РґРЅСЏ.';
+    }
+
+
+    const weight =
+      parseDecimal(
+        values.totalWeight
+      );
+
+    if (
+      !Number.isFinite(
+        weight
+      ) ||
+      weight <=
+        0
+    ) {
+      errors.totalWeight =
+        'РЈРєР°Р¶РёС‚Рµ РѕР±С‰РёР№ С‚РѕРЅРЅР°Р¶ Р±РѕР»СЊС€Рµ 0.';
+    }
+
+
+    const cargoLength =
+      parseDecimal(
+        values.cargoLength
+      );
+
+    if (
+      !Number.isFinite(
+        cargoLength
+      ) ||
+      cargoLength <=
+        0
+    ) {
+      errors.cargoLength =
+        'РЈРєР°Р¶РёС‚Рµ РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ РґР»РёРЅСѓ РіСЂСѓР·Р° Р±РѕР»СЊС€Рµ 0.';
+    }
+
+
+    if (
+      !values.needsStakes
+    ) {
+      errors.needsStakes =
+        'РЈРєР°Р¶РёС‚Рµ, РЅСѓР¶РЅС‹ Р»Рё РєРѕРЅРёРєРё.';
+    }
+
+
+    if (
+      !values.loadingAddress
+        .trim() &&
+      !values.loadingMapUrl
+        .trim()
+    ) {
+      errors.loadingAddress =
+        'РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РїРѕРіСЂСѓР·РєРё РёР»Рё СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
+
+      errors.loadingMapUrl =
+        errors.loadingAddress;
+    }
+
+
+    if (
+      values.loadingMapUrl &&
+      !isValidYandexUrl(
+        values.loadingMapUrl
+      )
+    ) {
+      errors.loadingMapUrl =
+        'РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅСѓСЋ СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
+    }
+
+
+    if (
+      !values
+        .loadingContactName
+        .trim()
+    ) {
+      errors.loadingContactName =
+        'РЈРєР°Р¶РёС‚Рµ РёРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°.';
+    }
+
+
+    if (
+      !values
+        .loadingContactPhone
+        .trim()
+    ) {
+      errors.loadingContactPhone =
+        'РЈРєР°Р¶РёС‚Рµ С‚РµР»РµС„РѕРЅ РЅР° РїРѕРіСЂСѓР·РєРµ.';
+    }
+
+
+    if (
+      !values.loadingUntil
+    ) {
+      errors.loadingUntil =
+        'РЈРєР°Р¶РёС‚Рµ, РґРѕ СЃРєРѕР»СЊРєРё СЂР°Р±РѕС‚Р°РµС‚ РїРѕРіСЂСѓР·РєР°.';
+    }
+
+
+    if (
+      !values.unloadingAddress
+        .trim() &&
+      !values.unloadingMapUrl
+        .trim()
+    ) {
+      errors.unloadingAddress =
+        'РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РІС‹РіСЂСѓР·РєРё РёР»Рё СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
+
+      errors.unloadingMapUrl =
+        errors.unloadingAddress;
+    }
+
+
+    if (
+      values.unloadingMapUrl &&
+      !isValidYandexUrl(
+        values.unloadingMapUrl
+      )
+    ) {
+      errors.unloadingMapUrl =
+        'РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅСѓСЋ СЃСЃС‹Р»РєСѓ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹.';
+    }
+
+
+    if (
+      !values
+        .unloadingContactName
+        .trim()
+    ) {
+      errors.unloadingContactName =
+        'РЈРєР°Р¶РёС‚Рµ РёРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°.';
+    }
+
+
+    if (
+      !values
+        .unloadingContactPhone
+        .trim()
+    ) {
+      errors.unloadingContactPhone =
+        'РЈРєР°Р¶РёС‚Рµ С‚РµР»РµС„РѕРЅ РЅР° РІС‹РіСЂСѓР·РєРµ.';
+    }
+
+
+    if (
+      !values.unloadingUntil
+    ) {
+      errors.unloadingUntil =
+        'РЈРєР°Р¶РёС‚Рµ, РґРѕ СЃРєРѕР»СЊРєРё РїСЂРёРЅРёРјР°СЋС‚ РЅР° РѕР±СЉРµРєС‚Рµ.';
+    }
+
+
+    if (
+      !invoiceFile
+    ) {
+      errors.invoiceFile =
+        'РџСЂРёРєСЂРµРїРёС‚Рµ С„РѕС‚Рѕ РёР»Рё PDF СЃС‡С‘С‚Р° РЅР° РїРѕРіСЂСѓР·РєСѓ.';
+    }
+
+
+    setFieldErrors(
+      errors
+    );
+
+
+    const firstError =
+      Object.keys(
+        errors
+      )[0];
+
+
+    if (firstError) {
+      setShowMissingFieldsModal(
+        true
+      );
+
+      window.setTimeout(
+        () => {
+          const element =
+            document.querySelector(
+              `[data-field="${firstError}"]`
+            );
+
+          element?.scrollIntoView({
+            behavior:
+              'smooth',
+
+            block:
+              'center',
+          });
+        },
+        50
+      );
+    }
+
+
+    return (
+      Object.keys(
+        errors
+      ).length ===
+      0
+    );
+  }
+
+
+  async function handleSubmit(
+    event:
+      FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+
+    if (
+      submitting
+    ) {
+      return;
+    }
+
+
+    setServerError(
+      ''
+    );
+
+
+    if (
+      !validateForm()
+    ) {
+      return;
+    }
+
+
+    if (
+      !invoiceFile
+    ) {
+      setShowMissingFieldsModal(
+        true
+      );
+
+      return;
+    }
+
+
+    setSubmitting(
+      true
+    );
+
+
+    try {
+      const formData =
+        new FormData();
+
+
+      formData.set(
+        'managerEmail',
+        values.managerEmail.trim()
+      );
+
+
+      formData.set(
+        'loadingDate',
+        values.loadingDate
+      );
+
+
+      formData.set(
+        'desiredPickupTime',
+        values.desiredPickupTime
+      );
+
+
+      formData.set(
+        'preferredVehicleTypeId',
+        values
+          .preferredVehicleTypeId
+      );
+
+
+      formData.set(
+        'totalWeight',
+        values.totalWeight
+      );
+
+
+      formData.set(
+        'cargoLength',
+        values.cargoLength
+      );
+
+
+      formData.set(
+        'needsStakes',
+        values.needsStakes
+      );
+
+
+      formData.set(
+        'logisticsFitCheck',
+        values.logisticsFitCheck
+          ? 'yes'
+          : 'no'
+      );
+
+
+      formData.set(
+        'loadingAddress',
+        values.loadingAddress.trim()
+      );
+
+
+      formData.set(
+        'loadingMapUrl',
+        values.loadingMapUrl.trim()
+      );
+
+
+      formData.set(
+        'loadingContactName',
+        values
+          .loadingContactName
+          .trim()
+      );
+
+
+      formData.set(
+        'loadingContactPhone',
+        values
+          .loadingContactPhone
+          .trim()
+      );
+
+
+      formData.set(
+        'loadingUntil',
+        values.loadingUntil
+      );
+
+
+      formData.set(
+        'unloadingAddress',
+        values
+          .unloadingAddress
+          .trim()
+      );
+
+
+      formData.set(
+        'unloadingMapUrl',
+        values
+          .unloadingMapUrl
+          .trim()
+      );
+
+
+      formData.set(
+        'unloadingContactName',
+        values
+          .unloadingContactName
+          .trim()
+      );
+
+
+      formData.set(
+        'unloadingContactPhone',
+        values
+          .unloadingContactPhone
+          .trim()
+      );
+
+
+      formData.set(
+        'unloadingUntil',
+        values.unloadingUntil
+      );
+
+
+      formData.set(
+        'comment',
+        values.comment.trim()
+      );
+
+
+      formData.set(
+        'website',
+        ''
+      );
+
+
+      formData.set(
+        'invoiceFile',
+        invoiceFile,
+        invoiceFile.name
+      );
+
+
+      const response =
+        await fetch(
+          '/api/transport-request',
+          {
+            method:
+              'POST',
+
+            body:
+              formData,
+          }
+        );
+
+
+      const result =
+        await response.json();
+
+
+      if (
+        response.status ===
+        401
+      ) {
+        window.location.href =
+          '/login';
+
+        return;
+      }
+
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        if (
+          result.fieldErrors &&
+          typeof result.fieldErrors ===
+            'object'
+        ) {
+          setFieldErrors(
+            result.fieldErrors
+          );
+
+          if (
+            Object.keys(
+              result.fieldErrors
+            ).length >
+            0
+          ) {
+            setShowMissingFieldsModal(
+              true
+            );
+          }
+        }
+
+
+        setServerError(
+          result.message ||
+          'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ. РџСЂРѕРІРµСЂСЊС‚Рµ РґР°РЅРЅС‹Рµ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.'
+        );
+
+        return;
+      }
+
+
+      setSuccessNumber(
+        result.requestNumber
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        'TRANSPORT REQUEST CLIENT ERROR:',
+        error
+      );
+
+
+      setServerError(
+        'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ. РџСЂРѕРІРµСЂСЊС‚Рµ СЃРѕРµРґРёРЅРµРЅРёРµ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.'
+      );
+    } finally {
+      setSubmitting(
+        false
+      );
+    }
+  }
+
+
+  if (
+    successNumber
+  ) {
+    return (
+      <div
+        className={
+          styles.successCard
+        }
+      >
+
+        <div
+          className={
+            styles.successIcon
+          }
+        >
+          <Check
+            size={
+              30
+            }
+          />
+        </div>
+
+
+        <div
+          className={
+            styles.successEyebrow
+          }
+        >
+          Р“РѕС‚РѕРІРѕ
+        </div>
+
+
+        <h2
+          className={
+            styles.successTitle
+          }
+        >
+          Р—Р°СЏРІРєР° РѕС‚РїСЂР°РІР»РµРЅР°
+        </h2>
+
+
+        <p
+          className={
+            styles.successText
+          }
+        >
+          РРЅС„РѕСЂРјР°С†РёСЏ РїРµСЂРµРґР°РЅР°
+          РѕС‚РІРµС‚СЃС‚РІРµРЅРЅРѕРјСѓ РјРµРЅРµРґР¶РµСЂСѓ.
+        </p>
+
+
+        <div
+          className={
+            styles.successNumber
+          }
+        >
+          {successNumber}
+        </div>
+
+
+        <button
+          type="button"
+          className={
+            styles.secondaryButton
+          }
+          onClick={
+            () => {
+              setSuccessNumber(
+                ''
+              );
+
+              setInvoiceFile(
+                null
+              );
+
+              setValues({
+                managerEmail:
+                  defaultManagerEmail,
+
+                loadingDate:
+                  '',
+
+                desiredPickupTime:
+                  '',
+
+                preferredVehicleTypeId:
+                  '',
+
+                totalWeight:
+                  '',
+
+                cargoLength:
+                  '',
+
+                needsStakes:
+                  '',
+
+                logisticsFitCheck:
+                  false,
+
+                loadingAddress:
+                  '',
+
+                loadingMapUrl:
+                  '',
+
+                loadingContactName:
+                  '',
+
+                loadingContactPhone:
+                  '',
+
+                loadingUntil:
+                  '',
+
+                unloadingAddress:
+                  '',
+
+                unloadingMapUrl:
+                  '',
+
+                unloadingContactName:
+                  '',
+
+                unloadingContactPhone:
+                  '',
+
+                unloadingUntil:
+                  '',
+
+                comment:
+                  '',
+              });
+
+              setFieldErrors(
+                {}
+              );
+
+              setServerError(
+                ''
+              );
+
+              setShowMissingFieldsModal(
+                false
+              );
+            }
+          }
+        >
+          <RotateCcw
+            size={
+              16
+            }
+          />
+
+          РЎРѕР·РґР°С‚СЊ РµС‰С‘ РѕРґРЅСѓ Р·Р°СЏРІРєСѓ
+        </button>
+
+      </div>
+    );
+  }
+
+
+  return (
+    <>
+      {showMissingFieldsModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="РќРµ РІСЃРµ РїРѕР»СЏ Р·Р°РїРѕР»РЅРµРЅС‹"
+          onClick={
+            () =>
+              setShowMissingFieldsModal(
+                false
+              )
+          }
+          style={{
+            position:
+              'fixed',
+
+            inset:
+              0,
+
+            zIndex:
+              99999,
+
+            display:
+              'flex',
+
+            alignItems:
+              'center',
+
+            justifyContent:
+              'center',
+
+            padding:
+              20,
+
+            background:
+              'rgba(35, 29, 26, 0.42)',
+
+            backdropFilter:
+              'blur(3px)',
+          }}
+        >
+          <div
+            onClick={
+              (
+                event
+              ) =>
+                event
+                  .stopPropagation()
+            }
+            style={{
+              position:
+                'relative',
+
+              width:
+                'min(92vw, 460px)',
+
+              padding:
+                '34px 30px 28px',
+
+              border:
+                '1px solid #e1d7d1',
+
+              borderRadius:
+                18,
+
+              background:
+                '#ffffff',
+
+              boxShadow:
+                '0 24px 70px rgba(50, 38, 31, 0.24)',
+
+              textAlign:
+                'center',
+            }}
+          >
+            <button
+              type="button"
+              aria-label="Р—Р°РєСЂС‹С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ"
+              onClick={
+                () =>
+                  setShowMissingFieldsModal(
+                    false
+                  )
+              }
+              style={{
+                position:
+                  'absolute',
+
+                top:
+                  12,
+
+                right:
+                  12,
+
+                display:
+                  'flex',
+
+                width:
+                  34,
+
+                height:
+                  34,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                border:
+                  '1px solid #e4dcd7',
+
+                borderRadius:
+                  9,
+
+                background:
+                  '#faf8f6',
+
+                color:
+                  '#74665e',
+
+                cursor:
+                  'pointer',
+              }}
+            >
+              <X
+                size={
+                  17
+                }
+              />
+            </button>
+
+
+            <div
+              style={{
+                display:
+                  'flex',
+
+                width:
+                  52,
+
+                height:
+                  52,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                margin:
+                  '0 auto 18px',
+
+                borderRadius:
+                  16,
+
+                background:
+                  '#756055',
+
+                color:
+                  '#ffffff',
+
+                fontSize:
+                  26,
+
+                fontWeight:
+                  800,
+              }}
+            >
+              !
+            </div>
+
+
+            <div
+              style={{
+                marginBottom:
+                  9,
+
+                color:
+                  '#2d2825',
+
+                fontSize:
+                  22,
+
+                fontWeight:
+                  800,
+
+                lineHeight:
+                  1.25,
+              }}
+            >
+              С‡РёС‚Р°Р№ РІРЅРёРјР°С‚РµР»СЊРЅРѕ Рё Р·Р°РїРѕР»РЅСЏР№ РІСЃРµ РїСѓРЅРєС‚С‹
+            </div>
+
+
+            <div
+              style={{
+                marginBottom:
+                  22,
+
+                color:
+                  '#827872',
+
+                fontSize:
+                  12,
+
+                lineHeight:
+                  1.55,
+              }}
+            >
+              Р’ Р·Р°СЏРІРєРµ РѕСЃС‚Р°Р»РёСЃСЊ
+              РЅРµР·Р°РїРѕР»РЅРµРЅРЅС‹Рµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ
+              РїРѕР»СЏ. РћРЅРё РѕС‚РјРµС‡РµРЅС‹ РЅРёР¶Рµ.
+            </div>
+
+
+            <button
+              type="button"
+              onClick={
+                () =>
+                  setShowMissingFieldsModal(
+                    false
+                  )
+              }
+              style={{
+                minWidth:
+                  145,
+
+                minHeight:
+                  43,
+
+                padding:
+                  '0 20px',
+
+                border:
+                  0,
+
+                borderRadius:
+                  10,
+
+                background:
+                  '#756055',
+
+                color:
+                  '#ffffff',
+
+                fontFamily:
+                  'inherit',
+
+                fontSize:
+                  12,
+
+                fontWeight:
+                  750,
+
+                cursor:
+                  'pointer',
+              }}
+            >
+              РџРѕРЅСЏС‚РЅРѕ
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      <form
+        className={
+          styles.form
+        }
+        onSubmit={
+          handleSubmit
+        }
+        noValidate
+      >
+
+        <section
+          className={
+            styles.card
+          }
+        >
+
+          <div
+            className={
+              styles.sectionHeader
+            }
+          >
+
+            <div
+              className={
+                styles.sectionNumber
+              }
+            >
+              1
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                РћР±С‰Р°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                РљС‚Рѕ СЃРѕР·РґР°С‘С‚ Р·Р°СЏРІРєСѓ
+                Рё РєРѕРіРґР° С‚СЂРµР±СѓРµС‚СЃСЏ
+                С‚СЂР°РЅСЃРїРѕСЂС‚.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div
+            className={
+              styles.twoColumns
+            }
+          >
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="managerEmail"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РџРѕС‡С‚Р° РјРµРЅРµРґР¶РµСЂР°
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="email"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .managerEmail
+                  )
+                }
+                value={
+                  values.managerEmail
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'managerEmail',
+                      event.target.value
+                    )
+                }
+                placeholder="manager@company.ru"
+                autoComplete="email"
+              />
+
+              {fieldErrors.managerEmail && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .managerEmail
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingDate"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Р”Р°С‚Р° РїРѕРіСЂСѓР·РєРё
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="date"
+                min={
+                  today
+                }
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingDate
+                  )
+                }
+                value={
+                  values.loadingDate
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingDate',
+                      event.target.value
+                    )
+                }
+              />
+
+              {fieldErrors.loadingDate && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingDate
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Р–РµР»Р°РµРјРѕРµ РІСЂРµРјСЏ РїРѕРґР°С‡Рё РјР°С€РёРЅС‹
+              </label>
+
+              <input
+                type="time"
+                className={
+                  styles.input
+                }
+                value={
+                  values.desiredPickupTime
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'desiredPickupTime',
+                      event.target.value
+                    )
+                }
+              />
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                РќРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ.
+                РќР°РїСЂРёРјРµСЂ, 09:00.
+              </div>
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="preferredVehicleTypeId"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РџСЂРµРґРїРѕС‡С‚РёС‚РµР»СЊРЅС‹Р№ С‚СЂР°РЅСЃРїРѕСЂС‚
+              </label>
+
+              <select
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .preferredVehicleTypeId
+                  )
+                }
+                value={
+                  values
+                    .preferredVehicleTypeId
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'preferredVehicleTypeId',
+                      event.target.value
+                    )
+                }
+              >
+
+                <option value="">
+                  РќРµ РІС‹Р±СЂР°РЅРѕ / РїРѕРґРѕР±СЂР°С‚СЊ Р»РѕРіРёСЃС‚Сѓ
+                </option>
+
+                {vehicles.map(
+                  (
+                    vehicle
+                  ) => (
+                    <option
+                      key={
+                        vehicle.id
+                      }
+                      value={
+                        vehicle.id
+                      }
+                    >
+                      {
+                        vehicle.name
+                      }
+                    </option>
+                  )
+                )}
+
+              </select>
+
+              {fieldErrors.preferredVehicleTypeId && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .preferredVehicleTypeId
+                  }
+                </div>
+              )}
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <section
+          className={
+            styles.card
+          }
+        >
+
+          <div
+            className={
+              styles.sectionHeader
+            }
+          >
+
+            <div
+              className={
+                styles.sectionNumber
+              }
+            >
+              2
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                РџР°СЂР°РјРµС‚СЂС‹ РіСЂСѓР·Р°
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                РћСЃРЅРѕРІРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹
+                РґР»СЏ РІС‹Р±РѕСЂР° РїРѕРґС…РѕРґСЏС‰РµР№
+                РјР°С€РёРЅС‹.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div
+            className={
+              styles.twoColumns
+            }
+          >
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="totalWeight"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РћР±С‰РёР№ С‚РѕРЅРЅР°Р¶
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <div
+                className={
+                  styles.inputWithUnit
+                }
+              >
+
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={
+                    fieldClass(
+                      fieldErrors
+                        .totalWeight
+                    )
+                  }
+                  value={
+                    values.totalWeight
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      updateValue(
+                        'totalWeight',
+                        event.target.value
+                      )
+                  }
+                  placeholder="12,5"
+                />
+
+                <span
+                  className={
+                    styles.unit
+                  }
+                >
+                  С‚
+                </span>
+
+              </div>
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                РњРѕР¶РЅРѕ РІРІРѕРґРёС‚СЊ
+                1,5 РёР»Рё 1.5.
+              </div>
+
+              {fieldErrors.totalWeight && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .totalWeight
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="cargoLength"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РњР°РєСЃРёРјР°Р»СЊРЅР°СЏ РґР»РёРЅР° РіСЂСѓР·Р°
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <div
+                className={
+                  styles.inputWithUnit
+                }
+              >
+
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={
+                    fieldClass(
+                      fieldErrors
+                        .cargoLength
+                    )
+                  }
+                  value={
+                    values.cargoLength
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      updateValue(
+                        'cargoLength',
+                        event.target.value
+                      )
+                  }
+                  placeholder="11,7"
+                />
+
+                <span
+                  className={
+                    styles.unit
+                  }
+                >
+                  Рј
+                </span>
+
+              </div>
+
+              {fieldErrors.cargoLength && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .cargoLength
+                  }
+                </div>
+              )}
+
+            </div>
+
+          </div>
+
+
+          <div
+            className={
+              styles.field
+            }
+            data-field="needsStakes"
+          >
+
+            <label
+              className={
+                styles.label
+              }
+            >
+              РќСѓР¶РЅС‹ Р»Рё РєРѕРЅРёРєРё?
+              <span
+                className={
+                  styles.required
+                }
+              >
+                *
+              </span>
+            </label>
+
+            <div
+              className={
+                styles.segmented
+              }
+            >
+
+              <button
+                type="button"
+                className={
+                  values.needsStakes ===
+                  'yes'
+                    ? `${styles.segmentButton} ${styles.segmentButtonActive}`
+                    : styles.segmentButton
+                }
+                onClick={
+                  () =>
+                    updateValue(
+                      'needsStakes',
+                      'yes'
+                    )
+                }
+              >
+                Р”Р°
+              </button>
+
+              <button
+                type="button"
+                className={
+                  values.needsStakes ===
+                  'no'
+                    ? `${styles.segmentButton} ${styles.segmentButtonActive}`
+                    : styles.segmentButton
+                }
+                onClick={
+                  () =>
+                    updateValue(
+                      'needsStakes',
+                      'no'
+                    )
+                }
+              >
+                РќРµС‚
+              </button>
+
+            </div>
+
+            <div
+              className={
+                styles.hint
+              }
+            >
+              РЈРєР°Р¶РёС‚Рµ, С‚СЂРµР±СѓРµС‚СЃСЏ Р»Рё
+              РїРµСЂРµРІРѕР·РєР° РіСЂСѓР·Р° СЃ
+              РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј РєРѕРЅРёРєРѕРІ.
+            </div>
+
+            {fieldErrors.needsStakes && (
+              <div
+                className={
+                  styles.errorText
+                }
+              >
+                {
+                  fieldErrors
+                    .needsStakes
+                }
+              </div>
+            )}
+
+          </div>
+
+
+          <label
+            className={
+              styles.checkCard
+            }
+          >
+
+            <input
+              type="checkbox"
+              checked={
+                values
+                  .logisticsFitCheck
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  updateValue(
+                    'logisticsFitCheck',
+                    event.target.checked
+                  )
+              }
+            />
+
+            <span
+              className={
+                styles.customCheckbox
+              }
+            >
+              {values.logisticsFitCheck && (
+                <Check
+                  size={
+                    15
+                  }
+                />
+              )}
+            </span>
+
+            <span>
+
+              <strong>
+                РЈС‚РѕС‡РЅРёС‚СЊ Сѓ Р»РѕРіРёСЃС‚Р°,
+                РїРѕРјРµСЃС‚РёС‚СЃСЏ Р»Рё РІРµСЃСЊ РіСЂСѓР·
+                РІ РѕРґРЅСѓ РјР°С€РёРЅСѓ
+              </strong>
+
+              <small>
+                РџРѕСЃС‚Р°РІСЊС‚Рµ РіР°Р»РѕС‡РєСѓ,
+                РµСЃР»Рё РїРµСЂРµРґ РѕС‚РїСЂР°РІРєРѕР№
+                РјР°С€РёРЅС‹ Р»РѕРіРёСЃС‚ РґРѕР»Р¶РµРЅ
+                РїСЂРѕРІРµСЂРёС‚СЊ РІРјРµСЃС‚РёРјРѕСЃС‚СЊ
+                РІСЃРµРіРѕ РіСЂСѓР·Р°.
+              </small>
+
+            </span>
+
+          </label>
+
+        </section>
+
+
+        <div
+          className={
+            styles.locationGrid
+          }
+        >
+
+          <section
+            className={
+              styles.card
+            }
+          >
+
+            <div
+              className={
+                styles.sectionHeader
+              }
+            >
+
+              <div
+                className={
+                  styles.sectionNumber
+                }
+              >
+                3
+              </div>
+
+              <div>
+
+                <h2
+                  className={
+                    styles.sectionTitle
+                  }
+                >
+                  РџРѕРіСЂСѓР·РєР°
+                </h2>
+
+                <p
+                  className={
+                    styles.sectionDescription
+                  }
+                >
+                  Р“РґРµ Р·Р°Р±СЂР°С‚СЊ РіСЂСѓР·
+                  Рё СЃ РєРµРј СЃРІСЏР·Р°С‚СЊСЃСЏ
+                  РЅР° РјРµСЃС‚Рµ.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingAddress"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РўРѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РїРѕРіСЂСѓР·РєРё
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingAddress
+                  )
+                }
+                value={
+                  values.loadingAddress
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingAddress',
+                      event.target.value
+                    )
+                }
+                placeholder="РњРѕСЃРєРѕРІСЃРєР°СЏ РѕР±Р»Р°СЃС‚СЊ, Р‘Р°Р»Р°С€РёС…Р°, ..."
+              />
+
+            </div>
+
+
+            <div
+              className={
+                styles.orDivider
+              }
+            >
+              РёР»Рё
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingMapUrl"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РЎСЃС‹Р»РєР° РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹ вЂ” РїРѕРіСЂСѓР·РєР°
+              </label>
+
+              <input
+                type="url"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingMapUrl
+                  )
+                }
+                value={
+                  values.loadingMapUrl
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingMapUrl',
+                      event.target.value
+                    )
+                }
+                placeholder="https://yandex.ru/maps/..."
+              />
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ
+                РёР»Рё РІСЃС‚Р°РІСЊС‚Рµ СЃСЃС‹Р»РєСѓ
+                РЅР° С‚РѕС‡РєСѓ РІ РЇРЅРґРµРєСЃ РљР°СЂС‚Р°С….
+              </div>
+
+              {(fieldErrors.loadingAddress ||
+                fieldErrors.loadingMapUrl) && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingMapUrl ||
+                    fieldErrors
+                      .loadingAddress
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.divider
+              }
+            />
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingContactName"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingContactName
+                  )
+                }
+                value={
+                  values
+                    .loadingContactName
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingContactName',
+                      event.target.value
+                    )
+                }
+                placeholder="РРІР°РЅ"
+              />
+
+              {fieldErrors.loadingContactName && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingContactName
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingContactPhone"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РўРµР»РµС„РѕРЅ
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="tel"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingContactPhone
+                  )
+                }
+                value={
+                  values
+                    .loadingContactPhone
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingContactPhone',
+                      event.target.value
+                    )
+                }
+                placeholder="+7 999 123-45-67"
+              />
+
+              {fieldErrors.loadingContactPhone && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingContactPhone
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="loadingUntil"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Р”Рѕ СЃРєРѕР»СЊРєРё СЂР°Р±РѕС‚Р°РµС‚ РїРѕРіСЂСѓР·РєР°?
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="time"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .loadingUntil
+                  )
+                }
+                value={
+                  values.loadingUntil
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'loadingUntil',
+                      event.target.value
+                    )
+                }
+              />
+
+              {fieldErrors.loadingUntil && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .loadingUntil
+                  }
+                </div>
+              )}
+
+            </div>
+
+          </section>
+
+
+          <section
+            className={
+              styles.card
+            }
+          >
+
+            <div
+              className={
+                styles.sectionHeader
+              }
+            >
+
+              <div
+                className={
+                  styles.sectionNumber
+                }
+              >
+                4
+              </div>
+
+              <div>
+
+                <h2
+                  className={
+                    styles.sectionTitle
+                  }
+                >
+                  Р’С‹РіСЂСѓР·РєР°
+                </h2>
+
+                <p
+                  className={
+                    styles.sectionDescription
+                  }
+                >
+                  РљСѓРґР° РґРѕСЃС‚Р°РІРёС‚СЊ РіСЂСѓР·
+                  Рё РєС‚Рѕ РїСЂРёРЅРёРјР°РµС‚
+                  РЅР° РѕР±СЉРµРєС‚Рµ.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingAddress"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РўРѕС‡РЅС‹Р№ Р°РґСЂРµСЃ РІС‹РіСЂСѓР·РєРё
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingAddress
+                  )
+                }
+                value={
+                  values
+                    .unloadingAddress
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingAddress',
+                      event.target.value
+                    )
+                }
+                placeholder="РњРѕСЃРєРІР°, ..."
+              />
+
+            </div>
+
+
+            <div
+              className={
+                styles.orDivider
+              }
+            >
+              РёР»Рё
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingMapUrl"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РЎСЃС‹Р»РєР° РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚С‹ вЂ” РІС‹РіСЂСѓР·РєР°
+              </label>
+
+              <input
+                type="url"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingMapUrl
+                  )
+                }
+                value={
+                  values
+                    .unloadingMapUrl
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingMapUrl',
+                      event.target.value
+                    )
+                }
+                placeholder="https://yandex.ru/maps/..."
+              />
+
+              <div
+                className={
+                  styles.hint
+                }
+              >
+                РЈРєР°Р¶РёС‚Рµ С‚РѕС‡РЅС‹Р№ Р°РґСЂРµСЃ
+                РёР»Рё РІСЃС‚Р°РІСЊС‚Рµ СЃСЃС‹Р»РєСѓ
+                РЅР° С‚РѕС‡РєСѓ РІ РЇРЅРґРµРєСЃ РљР°СЂС‚Р°С….
+              </div>
+
+              {(fieldErrors.unloadingAddress ||
+                fieldErrors.unloadingMapUrl) && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingMapUrl ||
+                    fieldErrors
+                      .unloadingAddress
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.divider
+              }
+            />
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingContactName"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РРјСЏ РєРѕРЅС‚Р°РєС‚РЅРѕРіРѕ Р»РёС†Р°
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="text"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingContactName
+                  )
+                }
+                value={
+                  values
+                    .unloadingContactName
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingContactName',
+                      event.target.value
+                    )
+                }
+                placeholder="РЎРµСЂРіРµР№"
+              />
+
+              {fieldErrors.unloadingContactName && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingContactName
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingContactPhone"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                РўРµР»РµС„РѕРЅ
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="tel"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingContactPhone
+                  )
+                }
+                value={
+                  values
+                    .unloadingContactPhone
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingContactPhone',
+                      event.target.value
+                    )
+                }
+                placeholder="+7 999 123-45-67"
+              />
+
+              {fieldErrors.unloadingContactPhone && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingContactPhone
+                  }
+                </div>
+              )}
+
+            </div>
+
+
+            <div
+              className={
+                styles.field
+              }
+              data-field="unloadingUntil"
+            >
+
+              <label
+                className={
+                  styles.label
+                }
+              >
+                Р”Рѕ СЃРєРѕР»СЊРєРё РїСЂРёРЅРёРјР°СЋС‚ РЅР° РѕР±СЉРµРєС‚Рµ?
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </label>
+
+              <input
+                type="time"
+                className={
+                  fieldClass(
+                    fieldErrors
+                      .unloadingUntil
+                  )
+                }
+                value={
+                  values
+                    .unloadingUntil
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    updateValue(
+                      'unloadingUntil',
+                      event.target.value
+                    )
+                }
+              />
+
+              {fieldErrors.unloadingUntil && (
+                <div
+                  className={
+                    styles.errorText
+                  }
+                >
+                  {
+                    fieldErrors
+                      .unloadingUntil
+                  }
+                </div>
+              )}
+
+            </div>
+
+          </section>
+
+        </div>
+
+
+        <section
+          className={
+            styles.card
+          }
+        >
+
+          <div
+            className={
+              styles.sectionHeader
+            }
+          >
+
+            <div
+              className={
+                styles.sectionNumber
+              }
+            >
+              5
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                РЎС‡С‘С‚ РЅР° РїРѕРіСЂСѓР·РєСѓ
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                РџСЂРёРєСЂРµРїРёС‚Рµ С„РѕС‚РѕРіСЂР°С„РёСЋ,
+                СЃРєСЂРёРЅС€РѕС‚ РёР»Рё PDF СЃС‡С‘С‚Р°.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div
+            data-field="invoiceFile"
+          >
+
+            {!invoiceFile ? (
+              <div
+                className={
+                  isDragging
+                    ? `${styles.dropZone} ${styles.dropZoneActive}`
+                    : fieldErrors.invoiceFile
+                      ? `${styles.dropZone} ${styles.dropZoneError}`
+                      : styles.dropZone
+                }
+                onDragOver={
+                  (
+                    event
+                  ) => {
+                    event.preventDefault();
+
+                    setIsDragging(
+                      true
+                    );
+                  }
+                }
+                onDragLeave={
+                  () =>
+                    setIsDragging(
+                      false
+                    )
+                }
+                onDrop={
+                  handleDrop
+                }
+                onClick={
+                  () =>
+                    fileInputRef
+                      .current
+                      ?.click()
+                }
+                role="button"
+                tabIndex={
+                  0
+                }
+                onKeyDown={
+                  (
+                    event
+                  ) => {
+                    if (
+                      event.key ===
+                        'Enter' ||
+                      event.key ===
+                        ' '
+                    ) {
+                      fileInputRef
+                        .current
+                        ?.click();
+                    }
+                  }
+                }
+              >
+
+                <UploadCloud
+                  size={
+                    32
+                  }
+                />
+
+                <strong>
+                  РџРµСЂРµС‚Р°С‰РёС‚Рµ СЃС‡С‘С‚ СЃСЋРґР°
+                  РёР»Рё РЅР°Р¶РјРёС‚Рµ РґР»СЏ РІС‹Р±РѕСЂР° С„Р°Р№Р»Р°
+                </strong>
+
+                <span>
+                  PDF, JPG, JPEG, PNG РёР»Рё WEBP
+                </span>
+
+                <small>
+                  РњР°РєСЃРёРјР°Р»СЊРЅС‹Р№ СЂР°Р·РјРµСЂ
+                  РІ С‚РµРєСѓС‰РµР№ РІРµСЂСЃРёРё вЂ” 4 РњР‘
+                </small>
+
+              </div>
+            ) : (
+              <div
+                className={
+                  styles.fileCard
+                }
+              >
+
+                <div
+                  className={
+                    styles.filePreview
+                  }
+                >
+
+                  {previewUrl ? (
+                    <img
+                      src={
+                        previewUrl
+                      }
+                      alt="РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ СЃС‡С‘С‚Р°"
+                    />
+                  ) : (
+                    <FileText
+                      size={
+                        36
+                      }
+                    />
+                  )}
+
+                </div>
+
+
+                <div
+                  className={
+                    styles.fileInfo
+                  }
+                >
+
+                  <div
+                    className={
+                      styles.fileName
+                    }
+                  >
+                    {
+                      invoiceFile.name
+                    }
+                  </div>
+
+                  <div
+                    className={
+                      styles.fileMeta
+                    }
+                  >
+
+                    {invoiceFile.type.startsWith(
+                      'image/'
+                    ) ? (
+                      <ImageIcon
+                        size={
+                          14
+                        }
+                      />
+                    ) : (
+                      <FileText
+                        size={
+                          14
+                        }
+                      />
+                    )}
+
+                    <span>
+                      {
+                        invoiceFile.type ||
+                        'Р¤Р°Р№Р»'
+                      }
+                    </span>
+
+                    <span>
+                      В·
+                    </span>
+
+                    <span>
+                      {
+                        formatFileSize(
+                          invoiceFile.size
+                        )
+                      }
+                    </span>
+
+                  </div>
+
+                </div>
+
+
+                <div
+                  className={
+                    styles.fileActions
+                  }
+                >
+
+                  <button
+                    type="button"
+                    className={
+                      styles.smallButton
+                    }
+                    onClick={
+                      () =>
+                        fileInputRef
+                          .current
+                          ?.click()
+                    }
+                  >
+                    <Paperclip
+                      size={
+                        15
+                      }
+                    />
+
+                    Р—Р°РјРµРЅРёС‚СЊ
+                  </button>
+
+
+                  <button
+                    type="button"
+                    className={
+                      styles.deleteButton
+                    }
+                    onClick={
+                      removeFile
+                    }
+                  >
+                    <Trash2
+                      size={
+                        15
+                      }
+                    />
+
+                    РЈРґР°Р»РёС‚СЊ
+                  </button>
+
+                </div>
+
+              </div>
+            )}
+
+
+            <input
+              ref={
+                fileInputRef
+              }
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+              onChange={
+                handleFileInput
+              }
+              className={
+                styles.hiddenFileInput
+              }
+            />
+
+
+            {fieldErrors.invoiceFile && (
+              <div
+                className={
+                  styles.errorText
+                }
+              >
+                {
+                  fieldErrors
+                    .invoiceFile
+                }
+              </div>
+            )}
+
+          </div>
+
+        </section>
+
+
+        <section
+          className={
+            styles.card
+          }
+        >
+
+          <div
+            className={
+              styles.sectionHeader
+            }
+          >
+
+            <div
+              className={
+                styles.sectionNumber
+              }
+            >
+              6
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє Р·Р°СЏРІРєРµ
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                РќРµРѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ
+                РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <textarea
+            className={
+              styles.textarea
+            }
+            value={
+              values.comment
+            }
+            onChange={
+              (
+                event
+              ) =>
+                updateValue(
+                  'comment',
+                  event.target.value
+                )
+            }
+            placeholder="Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ РґР»СЏ Р»РѕРіРёСЃС‚Р° РёР»Рё РІРѕРґРёС‚РµР»СЏ"
+            rows={
+              5
+            }
+          />
+
+        </section>
+
+
+        <section
+          className={
+            `${styles.card} ${styles.reviewCard}`
+          }
+        >
+
+          <div
+            className={
+              styles.sectionHeader
+            }
+          >
+
+            <div
+              className={
+                styles.sectionNumber
+              }
+            >
+              7
+            </div>
+
+            <div>
+
+              <h2
+                className={
+                  styles.sectionTitle
+                }
+              >
+                РџСЂРѕРІРµСЂСЊС‚Рµ Р·Р°СЏРІРєСѓ
+              </h2>
+
+              <p
+                className={
+                  styles.sectionDescription
+                }
+              >
+                РљРѕСЂРѕС‚РєР°СЏ РїСЂРѕРІРµСЂРєР°
+                РїРµСЂРµРґ РѕС‚РїСЂР°РІРєРѕР№.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div
+            className={
+              styles.reviewGrid
+            }
+          >
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                РњРµРЅРµРґР¶РµСЂ
+              </span>
+
+              <strong>
+                {
+                  values.managerEmail ||
+                  'вЂ”'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Р”Р°С‚Р° РїРѕРіСЂСѓР·РєРё
+              </span>
+
+              <strong>
+                {
+                  values.loadingDate ||
+                  'вЂ”'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                РўСЂР°РЅСЃРїРѕСЂС‚
+              </span>
+
+              <strong>
+                {
+                  selectedVehicleName
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Р“СЂСѓР·
+              </span>
+
+              <strong>
+                {values.totalWeight ||
+                  'вЂ”'}{' '}
+                С‚ /{' '}
+                {values.cargoLength ||
+                  'вЂ”'}{' '}
+                Рј
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                РљРѕРЅРёРєРё
+              </span>
+
+              <strong>
+                {
+                  values.needsStakes ===
+                  'yes'
+                    ? 'Р”Р°'
+                    : values.needsStakes ===
+                      'no'
+                      ? 'РќРµС‚'
+                      : 'вЂ”'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                РџСЂРѕРІРµСЂРєР° Р»РѕРіРёСЃС‚РѕРј
+              </span>
+
+              <strong>
+                {
+                  values
+                    .logisticsFitCheck
+                    ? 'Р”Р°'
+                    : 'РќРµС‚'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                РџРѕРіСЂСѓР·РєР°
+              </span>
+
+              <strong>
+                {
+                  values.loadingAddress ||
+                  values.loadingMapUrl ||
+                  'вЂ”'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Р’С‹РіСЂСѓР·РєР°
+              </span>
+
+              <strong>
+                {
+                  values.unloadingAddress ||
+                  values.unloadingMapUrl ||
+                  'вЂ”'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                РЎС‡С‘С‚
+              </span>
+
+              <strong>
+                {
+                  invoiceFile
+                    ? invoiceFile.name
+                    : 'РќРµ РїСЂРёРєСЂРµРїР»С‘РЅ'
+                }
+              </strong>
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {serverError && (
+          <div
+            className={
+              styles.serverError
+            }
+          >
+            {serverError}
+          </div>
+        )}
+
+
+        <div
+          className={
+            styles.submitArea
+          }
+        >
+
+          <div
+            className={
+              styles.submitNote
+            }
+          >
+            РџРѕСЃР»Рµ РѕС‚РїСЂР°РІРєРё РґР°РЅРЅС‹Рµ
+            Р·Р°СЏРІРєРё Рё РїСЂРёРєСЂРµРїР»С‘РЅРЅС‹Р№
+            СЃС‡С‘С‚ Р±СѓРґСѓС‚ РїРµСЂРµРґР°РЅС‹
+            Р»РѕРіРёСЃС‚Сѓ.
+          </div>
+
+
+          <button
+            type="submit"
+            disabled={
+              submitting
+            }
+            className={
+              styles.submitButton
+            }
+          >
+
+            {submitting ? (
+              <>
+                <LoaderCircle
+                  size={
+                    18
+                  }
+                  className={
+                    styles.spinner
+                  }
+                />
+
+                РћС‚РїСЂР°РІР»СЏРµРј Р·Р°СЏРІРєСѓвЂ¦
+              </>
+            ) : (
+              <>
+                <Send
+                  size={
+                    18
+                  }
+                />
+
+                РћС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ РЅР° С‚СЂР°РЅСЃРїРѕСЂС‚
+              </>
+            )}
+
+          </button>
+
+        </div>
+
+
+        <div
+          className={
+            styles.honeypot
+          }
+          aria-hidden="true"
+        >
+          <label>
+            Website
+
+            <input
+              type="text"
+              name="website"
+              tabIndex={
+                -1
+              }
+              autoComplete="off"
+            />
+          </label>
+        </div>
+
+      </form>
+    </>
+  );
+}

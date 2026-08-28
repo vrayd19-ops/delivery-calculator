@@ -1,0 +1,1 @@
+﻿INSERT INTO public."AppSettings" (id, "companyName", phone, currency, "roundingMode", "outsideBothRule", "globalDistanceFactor", "mkadGeoJson", "mkadSource", "updatedAt", "ttkGeoJson") VALUES ('global', 'ГлавГенСтрой', NULL, 'RUB', 'CEIL', 'FULL_OUTSIDE', 1.00, NULL, NULL, '2026-08-18 10:59:24.797', NULL);

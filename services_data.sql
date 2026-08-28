@@ -1,0 +1,1 @@
+﻿INSERT INTO public."AdditionalService" (id, name, "priceType", "priceValue", "isActive", "createdAt", "updatedAt") VALUES ('cmszzc2060006d0vo4z4r64hp', 'простой', 'HOURLY', 3000.00, true, '2026-08-19 10:59:40.71', '2026-08-19 10:59:40.71');
