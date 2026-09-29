@@ -204,21 +204,25 @@ textarea {
 
 
 /* =========================================================
-   LOGO
+   LOGO / SIDEBAR BRAND
    ========================================================= */
 
 .brt-logo-image-link {
   width: 100%;
 
-  height: 96px;
+  min-height: 96px;
 
   display: flex;
 
   align-items: center;
 
-  justify-content: center;
+  justify-content: flex-start;
 
   margin-bottom: 10px;
+
+  padding:
+    10px
+    8px;
 
   overflow: hidden;
 
@@ -226,19 +230,34 @@ textarea {
 }
 
 
-.brt-logo-image {
+.brt-sidebar-brand {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 1px;
+
+  min-width: 0;
+}
+
+
+.brt-sidebar-brand-line {
   display: block;
 
-  width: 165px;
-  height: 82px;
+  color: #18263f;
 
-  max-width: 100%;
+  font-size: 23px;
 
-  object-fit: contain;
+  line-height: 0.98;
 
-  object-position: center;
+  font-weight: 800;
 
-  background: transparent;
+  letter-spacing: -0.045em;
+}
+
+
+.brt-sidebar-brand-accent {
+  color: #2e5f9e;
 }
 
 
@@ -552,7 +571,9 @@ textarea {
    ========================================================= */
 
 .app-header {
-  min-height: 94px;
+  position: relative;
+
+  min-height: 124px;
 
   display: flex;
 
@@ -564,68 +585,75 @@ textarea {
 
   padding:
     18px
-    30px;
+    28px;
+
+  overflow: hidden;
 
   background:
-    rgba(
-      251,
-      249,
-      247,
-      0.98
+    linear-gradient(
+      135deg,
+      #0f1d33 0%,
+      #172b49 55%,
+      #0c1728 100%
     );
 
   border-bottom:
     1px solid
     rgba(
-      228,
-      220,
-      214,
-      0.78
+      8,
+      18,
+      31,
+      0.7
     );
 }
 
 
-.brt-header-title {
-  flex: 1;
+.brt-header-banner {
+  position: absolute;
 
-  display: flex;
+  inset: 0;
 
-  align-items: baseline;
+  z-index: 0;
 
-  gap: 8px;
+  display: block;
 
-  min-width: 0;
+  overflow: hidden;
 
-  white-space: nowrap;
+  text-decoration: none;
 }
 
 
-.brt-header-main,
-.brt-header-accent {
-  font-size:
-    clamp(
-      24px,
-      2vw,
-      33px
+.brt-header-banner::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 19, 34, 0.02) 0%,
+      rgba(8, 19, 34, 0) 58%,
+      rgba(8, 19, 34, 0.26) 100%
     );
 
-  line-height: 1;
-
-  letter-spacing: -0.045em;
+  pointer-events: none;
 }
 
 
-.brt-header-main {
-  color: #292522;
+.brt-header-banner-image {
+  width: 100%;
 
-  font-weight: 720;
-}
+  height: 100%;
 
+  display: block;
 
-.brt-header-accent {
-  color: #80695d;
+  object-fit: cover;
 
-  font-weight: 850;
+  object-position: center;
+
+  transform: none;
 }
 
 
@@ -634,6 +662,10 @@ textarea {
    ========================================================= */
 
 .header-right {
+  position: relative;
+
+  z-index: 2;
+
   display: flex;
 
   align-items: center;
@@ -641,6 +673,33 @@ textarea {
   gap: 10px;
 
   margin-left: auto;
+
+  margin-right: 0;
+
+  padding:
+    8px
+    10px;
+
+  background:
+    rgba(
+      7,
+      16,
+      29,
+      0.34
+    );
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.14
+    );
+
+  border-radius: 12px;
+
+  backdrop-filter: blur(4px);
 }
 
 
@@ -652,20 +711,24 @@ textarea {
 
   place-items: center;
 
-  color: #fff;
+  color: #17233a;
 
-  background:
-    linear-gradient(
-      145deg,
-      #7d6a60,
-      #5e4c43
+  background: #fff;
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.65
     );
 
   border-radius: 50%;
 
   font-size: 15px;
 
-  font-weight: 700;
+  font-weight: 800;
 }
 
 
@@ -679,11 +742,11 @@ textarea {
 
   overflow: hidden;
 
-  color: #37322f;
+  color: #fff;
 
   font-size: 11px;
 
-  font-weight: 690;
+  font-weight: 720;
 
   text-overflow: ellipsis;
 
@@ -694,7 +757,13 @@ textarea {
 .user-role {
   margin-top: 3px;
 
-  color: #918983;
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      0.72
+    );
 
   font-size: 9px;
 }
@@ -791,25 +860,39 @@ textarea {
     8px
     15px !important;
 
-  color: #403a36 !important;
+  color: #17233a !important;
 
   background: #fff !important;
 
   border:
     1px solid
-    #cec5be !important;
+    rgba(
+      255,
+      255,
+      255,
+      0.8
+    ) !important;
 
   border-radius:
     var(--radius-sm) !important;
+
+  box-shadow:
+    0 4px 14px
+    rgba(
+      0,
+      0,
+      0,
+      0.18
+    );
 }
 
 
 .header-right .btn:hover {
   background:
-    #f5f1ee !important;
+    #f0f5fb !important;
 
   border-color:
-    #aea198 !important;
+    #fff !important;
 }
 
 
@@ -1991,8 +2074,8 @@ tbody tr:hover {
   }
 
 
-  .brt-logo-image {
-    width: 145px;
+  .brt-sidebar-brand-line {
+    font-size: 21px;
   }
 }
 
@@ -2031,19 +2114,22 @@ tbody tr:hover {
 
 
   .brt-logo-image-link {
-    width: 90px;
+    width: 128px;
 
-    min-width: 90px;
+    min-width: 128px;
 
-    height: 54px;
+    min-height: 54px;
 
     margin: 0 8px 0 0;
+
+    padding:
+      4px
+      2px;
   }
 
 
-  .brt-logo-image {
-    width: 86px;
-    height: 50px;
+  .brt-sidebar-brand-line {
+    font-size: 15px;
   }
 
 
@@ -2073,28 +2159,23 @@ tbody tr:hover {
 
 
   .app-header {
-    min-height: 74px;
+    min-height: 92px;
 
     padding:
-      13px
-      15px;
-
-    flex-wrap: wrap;
+      10px
+      12px;
   }
 
 
-  .brt-header-title {
-    white-space: normal;
-
-    flex-wrap: wrap;
-
-    gap: 5px;
+  .brt-header-banner-image {
+    object-position: center;
   }
 
 
-  .brt-header-main,
-  .brt-header-accent {
-    font-size: 21px;
+  .header-right {
+    padding:
+      6px
+      7px;
   }
 
 
@@ -2138,6 +2219,26 @@ tbody tr:hover {
 
 
 @media (max-width: 600px) {
+  .app-header {
+    min-height: 84px;
+  }
+
+
+  .brt-header-banner-image {
+    object-position: 44% center;
+  }
+
+
+  .header-right {
+    gap: 6px;
+
+    padding:
+      5px
+      6px;
+  }
+
+
+
   .user-block {
     display: none;
   }

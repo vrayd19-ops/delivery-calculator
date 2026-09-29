@@ -20,7 +20,7 @@ import LogoutButton from '@/components/LogoutButton';
 export const metadata: Metadata = {
   title: {
     default:
-      'БРТ — Быстрый Расчёт Логистики',
+      'БРТ — Быстрый Расчёт Транспорта',
 
     template:
       '%s | БРТ',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     'Быстрый расчёт стоимости доставки по Москве и Московской области',
 
   applicationName:
-    'БРТ — Быстрый Расчёт Логистики',
+    'БРТ — Быстрый Расчёт Транспорта',
 
   icons: {
     icon: [
@@ -207,15 +207,15 @@ export default async function RootLayout({
             <Link
               href="/"
               className="brt-logo-image-link"
-              aria-label="БРТ — главная"
+              aria-label="Быстрый Расчёт Транспорта — главная"
             >
-
-              <img
-                src="/brt-logo.png"
-                alt="БРТ"
-                className="brt-logo-image"
-              />
-
+              <div className="brt-sidebar-brand">
+                <span className="brt-sidebar-brand-line">Быстрый</span>
+                <span className="brt-sidebar-brand-line brt-sidebar-brand-accent">
+                  Расчёт
+                </span>
+                <span className="brt-sidebar-brand-line">Транспорта</span>
+              </div>
             </Link>
 
 
@@ -258,6 +258,27 @@ export default async function RootLayout({
 
                 <span>
                   Заявка на транспорт
+                </span>
+
+              </Link>
+
+
+              {/*
+               * =================================
+               * ДОВЕРЕННОСТИ
+               * =================================
+               */}
+              <Link
+                href="/powers-of-attorney"
+                className="side-menu-item"
+              >
+
+                <span className="side-icon">
+                  ◇
+                </span>
+
+                <span>
+                  Доверенности
                 </span>
 
               </Link>
@@ -574,21 +595,17 @@ export default async function RootLayout({
 
             <header className="app-header">
 
-              <div className="brt-header-title">
-
-                <span className="brt-header-main">
-                  Быстрый
-                </span>
-
-                <span className="brt-header-accent">
-                  Расчёт
-                </span>
-
-                <span className="brt-header-main">
-                  Логистики
-                </span>
-
-              </div>
+              <Link
+                href="/"
+                className="brt-header-banner"
+                aria-label="БРТ Логистика — главная"
+              >
+                <img
+                  src="/brt-header-logo.png"
+                  alt="БРТ Логистика"
+                  className="brt-header-banner-image"
+                />
+              </Link>
 
 
               <div className="header-right">
