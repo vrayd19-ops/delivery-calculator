@@ -15,7 +15,6 @@ import {
   FileText,
   Image as ImageIcon,
   LoaderCircle,
-  Paperclip,
   RotateCcw,
   Send,
   Trash2,
@@ -357,20 +356,11 @@ export default function TransportRequestForm({
 
 
   const [
-    invoiceFile,
-    setInvoiceFile,
+    invoiceFiles,
+    setInvoiceFiles,
   ] =
-    useState<File | null>(
-      null
-    );
-
-
-  const [
-    previewUrl,
-    setPreviewUrl,
-  ] =
-    useState<string | null>(
-      null
+    useState<File[]>(
+      []
     );
 
 
@@ -456,42 +446,6 @@ export default function TransportRequestForm({
     );
 
 
-  useEffect(
-    () => {
-      if (
-        !invoiceFile ||
-        !invoiceFile.type
-          .startsWith(
-            'image/'
-          )
-      ) {
-        setPreviewUrl(
-          null
-        );
-
-        return;
-      }
-
-      const objectUrl =
-        URL.createObjectURL(
-          invoiceFile
-        );
-
-      setPreviewUrl(
-        objectUrl
-      );
-
-      return () => {
-        URL.revokeObjectURL(
-          objectUrl
-        );
-      };
-    },
-    [
-      invoiceFile,
-    ]
-  );
-
 
   function clearFieldError(
     name:
@@ -561,87 +515,103 @@ export default function TransportRequestForm({
         file.type
       )
     ) {
-      setFieldErrors(
-        (
-          current
-        ) => ({
-          ...current,
-
-          invoiceFile:
-            'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
-        })
-      );
-
-      return false;
+      return 'Допустимы только PDF, JPG, JPEG, PNG или WEBP.';
     }
-
 
     if (
       file.size >
       MAX_FILE_SIZE
     ) {
-      setFieldErrors(
-        (
-          current
-        ) => ({
-          ...current,
-
-          invoiceFile:
-            'Для отправки через текущий сервер размер файла не должен превышать 4 МБ.',
-        })
-      );
-
-      return false;
+      return 'Для отправки через текущий сервер размер файла не должен превышать 4 МБ.';
     }
-
 
     if (
       file.size <=
       0
     ) {
-      setFieldErrors(
-        (
-          current
-        ) => ({
-          ...current,
-
-          invoiceFile:
-            'Файл пустой. Выберите другой файл.',
-        })
-      );
-
-      return false;
+      return 'Файл пустой. Выберите другой файл.';
     }
 
-
-    clearFieldError(
-      'invoiceFile'
-    );
-
-    return true;
+    return '';
   }
 
 
-  function chooseFile(
-    file:
-      File |
-      undefined
+  function chooseFiles(
+    files: File[]
   ) {
-    if (!file) {
-      return;
-    }
-
     if (
-      !validateFile(
-        file
-      )
+      files.length ===
+      0
     ) {
       return;
     }
 
-    setInvoiceFile(
-      file
-    );
+    const nextFiles = [
+      ...invoiceFiles,
+    ];
+
+    for (const file of files) {
+      const validationMessage =
+        validateFile(
+          file
+        );
+
+      if (validationMessage) {
+        setFieldErrors(
+          (current) => ({
+            ...current,
+            invoiceFile:
+              validationMessage,
+          })
+        );
+        continue;
+      }
+
+      const duplicate =
+        nextFiles.some(
+          (existing) =>
+            existing.name ===
+              file.name &&
+            existing.size ===
+              file.size &&
+            existing.lastModified ===
+              file.lastModified
+        );
+
+      if (!duplicate) {
+        nextFiles.push(
+          file
+        );
+      }
+    }
+
+    if (
+      nextFiles.length >
+      10
+    ) {
+      setFieldErrors(
+        (current) => ({
+          ...current,
+          invoiceFile:
+            'Можно прикрепить не более 10 счетов за одну заявку.',
+        })
+      );
+
+      setInvoiceFiles(
+        nextFiles.slice(
+          0,
+          10
+        )
+      );
+    } else {
+      setInvoiceFiles(
+        nextFiles
+      );
+
+      clearFieldError(
+        'invoiceFile'
+      );
+    }
 
     setServerError(
       ''
@@ -653,10 +623,14 @@ export default function TransportRequestForm({
     event:
       ChangeEvent<HTMLInputElement>
   ) {
-    chooseFile(
-      event.target
-        .files?.[0]
+    chooseFiles(
+      Array.from(
+        event.target.files ||
+        []
+      )
     );
+
+    event.target.value = '';
   }
 
 
@@ -670,33 +644,31 @@ export default function TransportRequestForm({
       false
     );
 
-    chooseFile(
-      event.dataTransfer
-        .files?.[0]
+    chooseFiles(
+      Array.from(
+        event.dataTransfer.files
+      )
     );
   }
 
 
-  function removeFile() {
-    setInvoiceFile(
-      null
+  function removeFile(
+    index: number
+  ) {
+    setInvoiceFiles(
+      (current) =>
+        current.filter(
+          (_, currentIndex) =>
+            currentIndex !==
+            index
+        )
     );
-
-    setPreviewUrl(
-      null
-    );
-
-    if (
-      fileInputRef.current
-    ) {
-      fileInputRef.current.value =
-        '';
-    }
 
     clearFieldError(
       'invoiceFile'
     );
   }
+
 
 
   function validateForm() {
@@ -892,10 +864,11 @@ export default function TransportRequestForm({
 
 
     if (
-      !invoiceFile
+      invoiceFiles.length ===
+      0
     ) {
       errors.invoiceFile =
-        'Прикрепите фото или PDF счёта на погрузку.';
+        'Прикрепите хотя бы один счёт.';
     }
 
 
@@ -971,7 +944,8 @@ export default function TransportRequestForm({
 
 
     if (
-      !invoiceFile
+      invoiceFiles.length ===
+      0
     ) {
       setShowMissingFieldsModal(
         true
@@ -1132,11 +1106,13 @@ export default function TransportRequestForm({
       );
 
 
-      formData.set(
-        'invoiceFile',
-        invoiceFile,
-        invoiceFile.name
-      );
+      for (const invoiceFile of invoiceFiles) {
+        formData.append(
+          'invoiceFile',
+          invoiceFile,
+          invoiceFile.name
+        );
+      }
 
 
       const response =
@@ -1296,8 +1272,8 @@ export default function TransportRequestForm({
                 ''
               );
 
-              setInvoiceFile(
-                null
+              setInvoiceFiles(
+                []
               );
 
               setValues({
@@ -3152,7 +3128,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Счёт на погрузку
+                Счета на погрузку
               </h2>
 
               <p
@@ -3160,8 +3136,8 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Прикрепите фотографию,
-                скриншот или PDF счёта.
+                Прикрепите один или несколько
+                счетов: фото, скриншоты или PDF.
               </p>
 
             </div>
@@ -3173,227 +3149,82 @@ export default function TransportRequestForm({
             data-field="invoiceFile"
           >
 
-            {!invoiceFile ? (
-              <div
-                className={
-                  isDragging
-                    ? `${styles.dropZone} ${styles.dropZoneActive}`
-                    : fieldErrors.invoiceFile
-                      ? `${styles.dropZone} ${styles.dropZoneError}`
-                      : styles.dropZone
-                }
-                onDragOver={
-                  (
-                    event
-                  ) => {
-                    event.preventDefault();
+            <div
+              className={
+                isDragging
+                  ? `${styles.dropZone} ${styles.dropZoneActive}`
+                  : fieldErrors.invoiceFile
+                    ? `${styles.dropZone} ${styles.dropZoneError}`
+                    : styles.dropZone
+              }
+              onDragOver={
+                (
+                  event
+                ) => {
+                  event.preventDefault();
 
-                    setIsDragging(
-                      true
-                    );
-                  }
+                  setIsDragging(
+                    true
+                  );
                 }
-                onDragLeave={
-                  () =>
-                    setIsDragging(
-                      false
-                    )
-                }
-                onDrop={
-                  handleDrop
-                }
-                onClick={
-                  () =>
+              }
+              onDragLeave={
+                () =>
+                  setIsDragging(
+                    false
+                  )
+              }
+              onDrop={
+                handleDrop
+              }
+              onClick={
+                () =>
+                  fileInputRef
+                    .current
+                    ?.click()
+              }
+              role="button"
+              tabIndex={
+                0
+              }
+              onKeyDown={
+                (
+                  event
+                ) => {
+                  if (
+                    event.key ===
+                      'Enter' ||
+                    event.key ===
+                      ' '
+                  ) {
                     fileInputRef
                       .current
-                      ?.click()
-                }
-                role="button"
-                tabIndex={
-                  0
-                }
-                onKeyDown={
-                  (
-                    event
-                  ) => {
-                    if (
-                      event.key ===
-                        'Enter' ||
-                      event.key ===
-                        ' '
-                    ) {
-                      fileInputRef
-                        .current
-                        ?.click();
-                    }
+                      ?.click();
                   }
                 }
-              >
+              }
+            >
 
-                <UploadCloud
-                  size={
-                    32
-                  }
-                />
-
-                <strong>
-                  Перетащите счёт сюда
-                  или нажмите для выбора файла
-                </strong>
-
-                <span>
-                  PDF, JPG, JPEG, PNG или WEBP
-                </span>
-
-                <small>
-                  Максимальный размер
-                  в текущей версии — 4 МБ
-                </small>
-
-              </div>
-            ) : (
-              <div
-                className={
-                  styles.fileCard
+              <UploadCloud
+                size={
+                  32
                 }
-              >
+              />
 
-                <div
-                  className={
-                    styles.filePreview
-                  }
-                >
+              <strong>
+                Перетащите счета сюда
+                или нажмите для выбора файлов
+              </strong>
 
-                  {previewUrl ? (
-                    <img
-                      src={
-                        previewUrl
-                      }
-                      alt="Предпросмотр счёта"
-                    />
-                  ) : (
-                    <FileText
-                      size={
-                        36
-                      }
-                    />
-                  )}
+              <span>
+                PDF, JPG, JPEG, PNG или WEBP
+              </span>
 
-                </div>
+              <small>
+                До 10 счетов, каждый до 4 МБ
+              </small>
 
-
-                <div
-                  className={
-                    styles.fileInfo
-                  }
-                >
-
-                  <div
-                    className={
-                      styles.fileName
-                    }
-                  >
-                    {
-                      invoiceFile.name
-                    }
-                  </div>
-
-                  <div
-                    className={
-                      styles.fileMeta
-                    }
-                  >
-
-                    {invoiceFile.type.startsWith(
-                      'image/'
-                    ) ? (
-                      <ImageIcon
-                        size={
-                          14
-                        }
-                      />
-                    ) : (
-                      <FileText
-                        size={
-                          14
-                        }
-                      />
-                    )}
-
-                    <span>
-                      {
-                        invoiceFile.type ||
-                        'Файл'
-                      }
-                    </span>
-
-                    <span>
-                      ·
-                    </span>
-
-                    <span>
-                      {
-                        formatFileSize(
-                          invoiceFile.size
-                        )
-                      }
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-                <div
-                  className={
-                    styles.fileActions
-                  }
-                >
-
-                  <button
-                    type="button"
-                    className={
-                      styles.smallButton
-                    }
-                    onClick={
-                      () =>
-                        fileInputRef
-                          .current
-                          ?.click()
-                    }
-                  >
-                    <Paperclip
-                      size={
-                        15
-                      }
-                    />
-
-                    Заменить
-                  </button>
-
-
-                  <button
-                    type="button"
-                    className={
-                      styles.deleteButton
-                    }
-                    onClick={
-                      removeFile
-                    }
-                  >
-                    <Trash2
-                      size={
-                        15
-                      }
-                    />
-
-                    Удалить
-                  </button>
-
-                </div>
-
-              </div>
-            )}
+            </div>
 
 
             <input
@@ -3401,6 +3232,7 @@ export default function TransportRequestForm({
                 fileInputRef
               }
               type="file"
+              multiple
               accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
               onChange={
                 handleFileInput
@@ -3409,6 +3241,108 @@ export default function TransportRequestForm({
                 styles.hiddenFileInput
               }
             />
+
+
+            {invoiceFiles.length > 0 && (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 10,
+                  marginTop: 14,
+                }}
+              >
+                {invoiceFiles.map(
+                  (file, index) => (
+                    <div
+                      key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                      className={
+                        styles.fileCard
+                      }
+                    >
+                      <div
+                        className={
+                          styles.filePreview
+                        }
+                      >
+                        {file.type.startsWith(
+                          'image/'
+                        ) ? (
+                          <ImageIcon
+                            size={
+                              28
+                            }
+                          />
+                        ) : (
+                          <FileText
+                            size={
+                              28
+                            }
+                          />
+                        )}
+                      </div>
+
+                      <div
+                        className={
+                          styles.fileInfo
+                        }
+                      >
+                        <div
+                          className={
+                            styles.fileName
+                          }
+                        >
+                          {file.name}
+                        </div>
+
+                        <div
+                          className={
+                            styles.fileMeta
+                          }
+                        >
+                          <span>
+                            {file.type || 'Файл'}
+                          </span>
+
+                          <span>·</span>
+
+                          <span>
+                            {formatFileSize(
+                              file.size
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        className={
+                          styles.fileActions
+                        }
+                      >
+                        <button
+                          type="button"
+                          className={
+                            styles.deleteButton
+                          }
+                          onClick={() =>
+                            removeFile(
+                              index
+                            )
+                          }
+                        >
+                          <Trash2
+                            size={
+                              15
+                            }
+                          />
+
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
 
 
             {fieldErrors.invoiceFile && (
@@ -3726,14 +3660,20 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Счёт
+                Счета
               </span>
 
               <strong>
                 {
-                  invoiceFile
-                    ? invoiceFile.name
-                    : 'Не прикреплён'
+                  invoiceFiles.length >
+                  0
+                    ? `${invoiceFiles.length}: ${invoiceFiles
+                        .map(
+                          (file) =>
+                            file.name
+                        )
+                        .join(', ')}`
+                    : 'Не прикреплены'
                 }
               </strong>
             </div>
@@ -3766,8 +3706,8 @@ export default function TransportRequestForm({
             }
           >
             После отправки данные
-            заявки и прикреплённый
-            счёт будут переданы
+            заявки и прикреплённые
+            счета будут переданы
             логисту.
           </div>
 

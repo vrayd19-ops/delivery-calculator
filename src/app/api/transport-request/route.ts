@@ -607,66 +607,105 @@ export async function POST(
     parsed.data;
 
 
-  const invoiceEntry =
-    formData.get(
-      'invoiceFile'
-    );
-
-  const invoiceFile =
-    invoiceEntry instanceof
-      File
-      ? invoiceEntry
-      : null;
-
-  const fileValidation =
-    validateInvoiceFile(
-      invoiceFile
-    );
+  const invoiceFiles =
+    formData
+      .getAll('invoiceFile')
+      .filter(
+        (entry): entry is File =>
+          entry instanceof File
+      );
 
   if (
-    !fileValidation.success
+    invoiceFiles.length ===
+    0
   ) {
     return errorResponse(
-      fileValidation.message,
+      'Прикрепите хотя бы один счёт.',
       400,
       {
         invoiceFile:
-          fileValidation.message,
+          'Прикрепите хотя бы один счёт.',
       }
     );
   }
 
+  const MAX_INVOICE_FILES = 10;
+
   if (
-    !invoiceFile
+    invoiceFiles.length >
+    MAX_INVOICE_FILES
   ) {
     return errorResponse(
-      'Прикрепите фото или PDF счёта на погрузку.',
+      `Можно прикрепить не более ${MAX_INVOICE_FILES} счетов за одну заявку.`,
       400,
       {
         invoiceFile:
-          'Прикрепите фото или PDF счёта на погрузку.',
+          `Можно прикрепить не более ${MAX_INVOICE_FILES} счетов за одну заявку.`,
       }
     );
   }
 
-  if (
-    !isAllowedFileExtension(
-      invoiceFile.name
-    )
-  ) {
-    return errorResponse(
-      'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
-      400,
-      {
-        invoiceFile:
-          'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
-      }
-    );
+  for (const invoiceFile of invoiceFiles) {
+    const fileValidation =
+      validateInvoiceFile(
+        invoiceFile
+      );
+
+    if (
+      !fileValidation.success
+    ) {
+      return errorResponse(
+        fileValidation.message,
+        400,
+        {
+          invoiceFile:
+            fileValidation.message,
+        }
+      );
+    }
+
+    if (
+      !isAllowedFileExtension(
+        invoiceFile.name
+      )
+    ) {
+      return errorResponse(
+        'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
+        400,
+        {
+          invoiceFile:
+            'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
+        }
+      );
+    }
   }
+
+  const invoiceFileNames =
+    invoiceFiles
+      .map((file) =>
+        cleanFileName(
+          file.name
+        )
+      );
 
   const invoiceFileName =
-    cleanFileName(
-      invoiceFile.name
+    invoiceFileNames.join(', ');
+
+  const invoiceFileType =
+    invoiceFiles
+      .map(
+        (file) =>
+          file.type ||
+          'application/octet-stream'
+      )
+      .join(', ');
+
+  const invoiceFileSize =
+    invoiceFiles.reduce(
+      (total, file) =>
+        total +
+        file.size,
+      0
     );
 
 
@@ -851,11 +890,9 @@ export async function POST(
 
             invoiceFileName,
 
-            invoiceFileType:
-              invoiceFile.type,
+            invoiceFileType,
 
-            invoiceFileSize:
-              invoiceFile.size,
+            invoiceFileSize,
 
             comment:
               data.comment ??
@@ -1041,12 +1078,14 @@ export async function POST(
 
 
   try {
-    await sendTransportRequestInvoiceToTelegram({
-      requestNumber,
+    for (const invoiceFile of invoiceFiles) {
+      await sendTransportRequestInvoiceToTelegram({
+        requestNumber,
 
-      file:
-        invoiceFile,
-    });
+        file:
+          invoiceFile,
+      });
+    }
 
     await prisma
       .transportRequest
@@ -1101,7 +1140,7 @@ export async function POST(
           telegramMessageId,
 
           telegramError:
-            'Текст заявки отправлен, но файл счёта не доставлен в Telegram.',
+            'Текст заявки отправлен, но один или несколько файлов счетов не доставлены в Telegram.',
         },
       })
       .catch(
@@ -1116,7 +1155,7 @@ export async function POST(
       );
 
     return errorResponse(
-      'Данные заявки сохранены, но счёт не удалось отправить в Telegram. Заявка не считается полностью отправленной.',
+      'Данные заявки сохранены, но один или несколько счетов не удалось отправить в Telegram. Заявка не считается полностью отправленной.',
       502
     );
   }
