@@ -1,4 +1,4 @@
-services:
+﻿services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -10,6 +10,9 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+    ports:
+      - "5433:5432"
 
     healthcheck:
       test:
@@ -24,7 +27,6 @@ services:
     networks:
       - brt-network
 
-
   migrate:
     build:
       context: .
@@ -32,7 +34,10 @@ services:
       target: migrator
 
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/delivery_calculator
+
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
 
     depends_on:
       postgres:
@@ -42,7 +47,6 @@ services:
 
     networks:
       - brt-network
-
 
   osrm:
     image: osrm/osrm-backend
@@ -63,7 +67,6 @@ services:
     networks:
       - brt-network
 
-
   app:
     build:
       context: .
@@ -78,17 +81,23 @@ services:
     environment:
       NODE_ENV: production
 
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/delivery_calculator
 
       OSRM_BASE_URL: http://osrm:5000
 
       YANDEX_GEOCODER_API_KEY: ${YANDEX_GEOCODER_API_KEY}
       YANDEX_GEOSUGGEST_API_KEY: ${YANDEX_GEOSUGGEST_API_KEY}
-      
 
       NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY}
 
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+
       AUTH_SECRET: ${AUTH_SECRET}
+
+      AUTH_COOKIE_SECURE: "false"
 
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
@@ -109,10 +118,8 @@ services:
     networks:
       - brt-network
 
-
 volumes:
   postgres_data:
-
 
 networks:
   brt-network:

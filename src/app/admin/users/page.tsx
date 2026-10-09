@@ -18,15 +18,15 @@ import {
   requireAdmin,
 } from '@/lib/auth';
 
+import DeleteUserButton from './DeleteUserButton';
+
 
 async function createUser(
   formData: FormData
 ) {
   'use server';
 
-
   await requireAdmin();
-
 
   const email =
     String(
@@ -37,14 +37,12 @@ async function createUser(
       .trim()
       .toLowerCase();
 
-
   const password =
     String(
       formData.get(
         'password'
       ) ?? ''
     );
-
 
   const role =
     String(
@@ -53,13 +51,11 @@ async function createUser(
       ) ?? 'MANAGER'
     );
 
-
   if (!email) {
     throw new Error(
       'Укажите email'
     );
   }
-
 
   if (
     password.length <
@@ -69,7 +65,6 @@ async function createUser(
       'Пароль должен содержать минимум 6 символов'
     );
   }
-
 
   if (
     role !==
@@ -82,7 +77,6 @@ async function createUser(
     );
   }
 
-
   const existing =
     await prisma.user.findUnique({
       where: {
@@ -90,20 +84,17 @@ async function createUser(
       },
     });
 
-
   if (existing) {
     throw new Error(
       `Пользователь ${email} уже существует`
     );
   }
 
-
   const passwordHash =
     await bcrypt.hash(
       password,
       12
     );
-
 
   await prisma.user.create({
     data: {
@@ -112,7 +103,6 @@ async function createUser(
       role,
     },
   });
-
 
   revalidatePath(
     '/admin/users'
@@ -126,10 +116,8 @@ async function updateUser(
 ) {
   'use server';
 
-
   const currentAdmin =
     await requireAdmin();
-
 
   const user =
     await prisma.user.findUnique({
@@ -138,13 +126,11 @@ async function updateUser(
       },
     });
 
-
   if (!user) {
     throw new Error(
       'Пользователь не найден'
     );
   }
-
 
   const email =
     String(
@@ -155,14 +141,12 @@ async function updateUser(
       .trim()
       .toLowerCase();
 
-
   const role =
     String(
       formData.get(
         'role'
       ) ?? 'MANAGER'
     );
-
 
   const newPassword =
     String(
@@ -171,13 +155,11 @@ async function updateUser(
       ) ?? ''
     );
 
-
   if (!email) {
     throw new Error(
       'Укажите email'
     );
   }
-
 
   if (
     role !==
@@ -190,12 +172,6 @@ async function updateUser(
     );
   }
 
-
-  /*
-   * Текущий администратор
-   * не может случайно
-   * лишить себя прав ADMIN.
-   */
   if (
     currentAdmin.id ===
       id &&
@@ -207,6 +183,29 @@ async function updateUser(
     );
   }
 
+  if (
+    user.role ===
+      'ADMIN' &&
+    role !==
+      'ADMIN'
+  ) {
+    const adminCount =
+      await prisma.user.count({
+        where: {
+          role:
+            'ADMIN',
+        },
+      });
+
+    if (
+      adminCount <=
+      1
+    ) {
+      throw new Error(
+        'Нельзя изменить роль последнего администратора'
+      );
+    }
+  }
 
   const sameEmail =
     await prisma.user.findFirst({
@@ -219,19 +218,16 @@ async function updateUser(
       },
     });
 
-
   if (sameEmail) {
     throw new Error(
       `Email ${email} уже используется`
     );
   }
 
-
   let passwordHash:
     string |
     undefined =
     undefined;
-
 
   if (newPassword) {
     if (
@@ -243,14 +239,12 @@ async function updateUser(
       );
     }
 
-
     passwordHash =
       await bcrypt.hash(
         newPassword,
         12
       );
   }
-
 
   await prisma.user.update({
     where: {
@@ -269,14 +263,122 @@ async function updateUser(
     },
   });
 
+  revalidatePath(
+    '/admin/users'
+  );
+
+  revalidatePath(
+    '/history'
+  );
+}
+
+
+async function deleteUser(
+  id: string,
+  _formData: FormData
+) {
+  'use server';
+
+  const currentAdmin =
+    await requireAdmin();
+
+  if (
+    currentAdmin.id ===
+    id
+  ) {
+    throw new Error(
+      'Нельзя удалить свою собственную учётную запись'
+    );
+  }
+
+  const user =
+    await prisma.user.findUnique({
+      where: {
+        id,
+      },
+    });
+
+  if (!user) {
+    throw new Error(
+      'Пользователь не найден'
+    );
+  }
+
+  if (
+    user.role ===
+    'ADMIN'
+  ) {
+    const adminCount =
+      await prisma.user.count({
+        where: {
+          role:
+            'ADMIN',
+        },
+      });
+
+    if (
+      adminCount <=
+      1
+    ) {
+      throw new Error(
+        'Нельзя удалить последнего администратора'
+      );
+    }
+  }
+
+  await prisma.$transaction(
+    async (
+      tx
+    ) => {
+      /*
+       * Сохраняем старые расчёты,
+       * но убираем привязку к удаляемому пользователю.
+       */
+      await tx.calculation.updateMany({
+        where: {
+          userId:
+            id,
+        },
+
+        data: {
+          userId:
+            null,
+        },
+      });
+
+      /*
+       * Сохраняем заявки на транспорт.
+       */
+      await tx.transportRequest.updateMany({
+        where: {
+          createdByUserId:
+            id,
+        },
+
+        data: {
+          createdByUserId:
+            null,
+        },
+      });
+
+      await tx.user.delete({
+        where: {
+          id,
+        },
+      });
+    }
+  );
 
   revalidatePath(
     '/admin/users'
   );
 
-
   revalidatePath(
     '/history'
+  );
+
+  revalidatePath(
+    '/transport-request'
   );
 }
 
@@ -287,13 +389,11 @@ export default async function UsersPage() {
       () => null
     );
 
-
   if (!currentAdmin) {
     redirect(
       '/login'
     );
   }
-
 
   const users =
     await prisma.user.findMany({
@@ -319,39 +419,32 @@ export default async function UsersPage() {
       },
     });
 
+  const adminCount =
+    users.filter(
+      (
+        user
+      ) =>
+        user.role ===
+        'ADMIN'
+    ).length;
 
   return (
     <div className="admin-section-page">
 
-      {/*
-       * ======================================
-       * HEADER
-       * ======================================
-       */}
       <div className="admin-section-header">
-
         <div>
-
           <h1>
             Пользователи
           </h1>
-
 
           <p>
             Управление администраторами
             и менеджерами системы.
           </p>
-
         </div>
-
       </div>
 
 
-      {/*
-       * ======================================
-       * НОВЫЙ ПОЛЬЗОВАТЕЛЬ
-       * ======================================
-       */}
       <form
         action={
           createUser
@@ -365,7 +458,6 @@ export default async function UsersPage() {
             18,
         }}
       >
-
         <div
           style={{
             display:
@@ -387,7 +479,6 @@ export default async function UsersPage() {
               '1px solid var(--line)',
           }}
         >
-
           <div
             style={{
               width:
@@ -424,9 +515,7 @@ export default async function UsersPage() {
             +
           </div>
 
-
           <div>
-
             <div
               style={{
                 fontSize:
@@ -438,7 +527,6 @@ export default async function UsersPage() {
             >
               Добавить пользователя
             </div>
-
 
             <div
               style={{
@@ -455,16 +543,13 @@ export default async function UsersPage() {
               Создайте учётную запись
               менеджера или администратора.
             </div>
-
           </div>
-
         </div>
 
 
         <div className="tariff-admin-grid">
 
           <div className="field">
-
             <label>
               Email
             </label>
@@ -476,12 +561,10 @@ export default async function UsersPage() {
               autoComplete="off"
               placeholder="manager@company.ru"
             />
-
           </div>
 
 
           <div className="field">
-
             <label>
               Пароль
             </label>
@@ -496,12 +579,10 @@ export default async function UsersPage() {
               autoComplete="new-password"
               placeholder="Минимум 6 символов"
             />
-
           </div>
 
 
           <div className="field">
-
             <label>
               Роль
             </label>
@@ -510,7 +591,6 @@ export default async function UsersPage() {
               name="role"
               defaultValue="MANAGER"
             >
-
               <option value="MANAGER">
                 Менеджер
               </option>
@@ -518,9 +598,7 @@ export default async function UsersPage() {
               <option value="ADMIN">
                 Администратор
               </option>
-
             </select>
-
           </div>
 
         </div>
@@ -572,24 +650,16 @@ export default async function UsersPage() {
               14,
           }}
         >
-
           <button
             type="submit"
             className="btn"
           >
             + Добавить пользователя
           </button>
-
         </div>
-
       </form>
 
 
-      {/*
-       * ======================================
-       * СПИСОК ПОЛЬЗОВАТЕЛЕЙ
-       * ======================================
-       */}
       <div className="tariff-admin-list">
 
         {users.map(
@@ -602,16 +672,24 @@ export default async function UsersPage() {
                 user.id
               );
 
+            const deleteAction =
+              deleteUser.bind(
+                null,
+                user.id
+              );
 
             const isSelf =
               currentAdmin.id ===
               user.id;
 
-
             const isAdmin =
               user.role ===
               'ADMIN';
 
+            const isLastAdmin =
+              isAdmin &&
+              adminCount <=
+                1;
 
             const initial =
               user.email
@@ -619,7 +697,6 @@ export default async function UsersPage() {
                   0
                 )
                 .toUpperCase();
-
 
             return (
               <form
@@ -632,11 +709,6 @@ export default async function UsersPage() {
                 className="card tariff-admin-card"
               >
 
-                {/*
-                 * ===============================
-                 * HEADER
-                 * ===============================
-                 */}
                 <div className="tariff-admin-card-header">
 
                   <div
@@ -687,7 +759,6 @@ export default async function UsersPage() {
                         0,
                     }}
                   >
-
                     <div
                       style={{
                         display:
@@ -703,11 +774,9 @@ export default async function UsersPage() {
                           'wrap',
                       }}
                     >
-
                       <h2>
                         {user.email}
                       </h2>
-
 
                       <span
                         style={{
@@ -776,15 +845,12 @@ export default async function UsersPage() {
 
 
                     <div className="tariff-admin-meta">
-
                       Создан:{' '}
 
                       {user.createdAt.toLocaleDateString(
                         'ru-RU'
                       )}
-
                     </div>
-
                   </div>
 
 
@@ -800,7 +866,6 @@ export default async function UsersPage() {
                         'right',
                     }}
                   >
-
                     <div
                       style={{
                         color:
@@ -818,7 +883,6 @@ export default async function UsersPage() {
                     >
                       Расчётов
                     </div>
-
 
                     <div
                       style={{
@@ -844,24 +908,17 @@ export default async function UsersPage() {
                           .calculations
                       }
                     </div>
-
                   </div>
 
                 </div>
 
 
-                {/*
-                 * ===============================
-                 * РЕДАКТИРОВАНИЕ
-                 * ===============================
-                 */}
                 <div
                   style={{
                     marginTop:
                       16,
                   }}
                 >
-
                   <div
                     style={{
                       color:
@@ -876,7 +933,6 @@ export default async function UsersPage() {
                   >
                     Данные пользователя
                   </div>
-
 
                   <div
                     style={{
@@ -894,14 +950,12 @@ export default async function UsersPage() {
                     если заполнить поле
                     «Новый пароль».
                   </div>
-
                 </div>
 
 
                 <div className="tariff-admin-grid">
 
                   <div className="field">
-
                     <label>
                       Email
                     </label>
@@ -914,12 +968,10 @@ export default async function UsersPage() {
                         user.email
                       }
                     />
-
                   </div>
 
 
                   <div className="field">
-
                     <label>
                       Роль
                     </label>
@@ -930,7 +982,6 @@ export default async function UsersPage() {
                         user.role
                       }
                     >
-
                       <option value="MANAGER">
                         Менеджер
                       </option>
@@ -938,14 +989,11 @@ export default async function UsersPage() {
                       <option value="ADMIN">
                         Администратор
                       </option>
-
                     </select>
-
                   </div>
 
 
                   <div className="field">
-
                     <label>
                       Новый пароль
                     </label>
@@ -959,7 +1007,6 @@ export default async function UsersPage() {
                       autoComplete="new-password"
                       placeholder="Не менять"
                     />
-
                   </div>
 
                 </div>
@@ -994,8 +1041,43 @@ export default async function UsersPage() {
                     }}
                   >
                     Это ваша текущая учётная запись.
-                    Система не позволит убрать у неё
-                    роль администратора.
+                    Системой запрещено удалить её
+                    или убрать у неё роль администратора.
+                  </div>
+                )}
+
+
+                {isLastAdmin && !isSelf && (
+                  <div
+                    style={{
+                      marginTop:
+                        5,
+
+                      padding:
+                        '10px 12px',
+
+                      color:
+                        '#765f38',
+
+                      background:
+                        '#fff9eb',
+
+                      border:
+                        '1px solid #eee0b7',
+
+                      borderRadius:
+                        7,
+
+                      fontSize:
+                        9,
+
+                      lineHeight:
+                        1.5,
+                    }}
+                  >
+                    Это последний администратор.
+                    Перед его удалением необходимо
+                    назначить другого администратора.
                   </div>
                 )}
 
@@ -1008,6 +1090,18 @@ export default async function UsersPage() {
                   >
                     Расчёты пользователя
                   </Link>
+
+
+                  {!isSelf && !isLastAdmin && (
+                    <DeleteUserButton
+                      action={
+                        deleteAction
+                      }
+                      email={
+                        user.email
+                      }
+                    />
+                  )}
 
 
                   <button

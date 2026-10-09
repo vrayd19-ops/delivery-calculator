@@ -41,8 +41,24 @@ function getSecret() {
 
 
 /*
- * Хеширование пароля
- * перед сохранением в БД.
+ * Нужно ли устанавливать cookie с флагом Secure.
+ *
+ * Для локального запуска:
+ * AUTH_COOKIE_SECURE=false
+ *
+ * Для HTTPS-сервера:
+ * AUTH_COOKIE_SECURE=true
+ */
+function useSecureCookie() {
+  return (
+    process.env.AUTH_COOKIE_SECURE ===
+    'true'
+  );
+}
+
+
+/*
+ * Хеширование пароля перед сохранением в БД.
  */
 export async function hashPassword(
   password: string
@@ -69,8 +85,7 @@ export async function verifyPassword(
 
 
 /*
- * Создание сессии после
- * регистрации или входа.
+ * Создание сессии после регистрации или входа.
  */
 export async function createSession(
   user: {
@@ -116,8 +131,7 @@ export async function createSession(
         'lax',
 
       secure:
-        process.env.NODE_ENV ===
-        'production',
+        useSecureCookie(),
 
       path:
         '/',
@@ -136,8 +150,25 @@ export async function deleteSession() {
   const cookieStore =
     await cookies();
 
-  cookieStore.delete(
-    SESSION_COOKIE
+  cookieStore.set(
+    SESSION_COOKIE,
+    '',
+    {
+      httpOnly:
+        true,
+
+      sameSite:
+        'lax',
+
+      secure:
+        useSecureCookie(),
+
+      path:
+        '/',
+
+      maxAge:
+        0,
+    }
   );
 }
 
@@ -191,8 +222,8 @@ export async function getSession() {
 
 
 /*
- * Получаем пользователя
- * из базы по текущей сессии.
+ * Получаем пользователя из базы
+ * по текущей сессии.
  */
 export async function getCurrentUser() {
   const session =
@@ -214,8 +245,7 @@ export async function getCurrentUser() {
 
 
 /*
- * Страница/API только
- * для авторизованных пользователей.
+ * Доступ только для авторизованных пользователей.
  */
 export async function requireUser() {
   const user =
@@ -232,8 +262,7 @@ export async function requireUser() {
 
 
 /*
- * Страница/API только
- * для администратора.
+ * Доступ только для администратора.
  */
 export async function requireAdmin() {
   const user =

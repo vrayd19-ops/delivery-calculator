@@ -6,6 +6,7 @@ node_modules
 .env.production
 .env.development
 .env*.local
+.env*
 
 osrm-data/
 old_delivery.dump
@@ -18,3 +19,8 @@ old_delivery.dump
 .DS_Store
 Thumbs.db
 .vercel
+
+# Python / OCR
+ocr-service/.venv/
+ocr-service/__pycache__/
+*.pyc

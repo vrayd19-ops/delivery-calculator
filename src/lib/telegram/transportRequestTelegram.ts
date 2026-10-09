@@ -177,7 +177,7 @@ export function buildTransportRequestTelegramMessage(
 
 
   lines.push(
-    '🚚 НОВАЯ ЗАЯВКА НА ТРАНСПОРТ'
+    ' НОВАЯ ЗАЯВКА НА ТРАНСПОРТ'
   );
 
   lines.push('');

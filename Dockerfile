@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+﻿FROM node:22-alpine AS base
 
 WORKDIR /app
 
@@ -9,7 +9,10 @@ FROM base AS deps
 
 COPY package.json package-lock.json ./
 
-RUN npm ci
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm ci
 
 
 FROM base AS builder
@@ -19,8 +22,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_YANDEX_MAPS_API_KEY
-
 ENV NEXT_PUBLIC_YANDEX_MAPS_API_KEY=$NEXT_PUBLIC_YANDEX_MAPS_API_KEY
+
+ARG DATABASE_URL=postgresql://postgres:postgres@postgres:5432/delivery_calculator
+ENV DATABASE_URL=$DATABASE_URL
 
 RUN npx prisma generate
 
@@ -37,7 +42,12 @@ COPY prisma ./prisma
 
 COPY prisma.config.ts ./prisma.config.ts
 
-CMD ["npx", "prisma", "migrate", "deploy"]
+ARG DATABASE_URL=postgresql://postgres:postgres@postgres:5432/delivery_calculator
+ENV DATABASE_URL=$DATABASE_URL
+
+RUN npx prisma generate
+
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed"]
 
 
 FROM node:22-alpine AS runner
@@ -53,11 +63,48 @@ RUN addgroup --system --gid 1001 nodejs
 
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# ==========================================
+# FULL RUNTIME DEPENDENCIES
+# ==========================================
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=deps \
+    --chown=nextjs:nodejs \
+    /app/node_modules \
+    ./node_modules
+
+
+# ==========================================
+# NEXT.JS STANDALONE
+# ==========================================
+
+COPY --from=builder \
+    --chown=nextjs:nodejs \
+    /app/.next/standalone \
+    ./
+
+COPY --from=builder \
+    --chown=nextjs:nodejs \
+    /app/.next/static \
+    ./.next/static
+
+COPY --from=builder \
+    --chown=nextjs:nodejs \
+    /app/public \
+    ./public
+
+
+# ==========================================
+# PDF.JS WORKER
+# ==========================================
+
+RUN mkdir -p /app/.next/server/chunks
+
+COPY --from=deps \
+    --chown=nextjs:nodejs \
+    /app/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs \
+    /app/.next/server/chunks/pdf.worker.mjs
+
 
 USER nextjs
 

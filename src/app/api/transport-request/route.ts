@@ -14,13 +14,7 @@ import {
 import {
   normalizeDecimalValue,
   transportRequestSchema,
-  validateInvoiceFile,
 } from '@/lib/transport-request/validation';
-
-import {
-  sendTransportRequestInvoiceToTelegram,
-  sendTransportRequestTextToTelegram,
-} from '@/lib/telegram/transportRequestTelegram';
 
 
 export const runtime =
@@ -36,10 +30,15 @@ const RATE_LIMIT_WINDOW_MS =
 const RATE_LIMIT_MAX_REQUESTS =
   8;
 
+
 type RateLimitEntry = {
-  count: number;
-  resetAt: number;
+  count:
+    number;
+
+  resetAt:
+    number;
 };
+
 
 const globalForRateLimit =
   globalThis as typeof globalThis & {
@@ -50,6 +49,7 @@ const globalForRateLimit =
       >;
   };
 
+
 const rateLimitStore =
   globalForRateLimit
     .transportRequestRateLimit ??
@@ -57,6 +57,7 @@ const rateLimitStore =
     string,
     RateLimitEntry
   >();
+
 
 if (
   process.env.NODE_ENV !==
@@ -69,8 +70,12 @@ if (
 
 
 function errorResponse(
-  message: string,
-  status = 400,
+  message:
+    string,
+
+  status =
+    400,
+
   fieldErrors?:
     Record<
       string,
@@ -106,19 +111,24 @@ function getClientIp(
       'x-forwarded-for'
     );
 
+
   if (forwarded) {
     return (
       forwarded
-        .split(',')[0]
+        .split(
+          ','
+        )[0]
         ?.trim() ||
       'unknown'
     );
   }
 
+
   const realIp =
     request.headers.get(
       'x-real-ip'
     );
+
 
   return (
     realIp?.trim() ||
@@ -128,15 +138,18 @@ function getClientIp(
 
 
 function isRateLimited(
-  ip: string
+  ip:
+    string
 ) {
   const now =
     Date.now();
+
 
   const existing =
     rateLimitStore.get(
       ip
     );
+
 
   if (
     !existing ||
@@ -155,8 +168,10 @@ function isRateLimited(
       }
     );
 
+
     return false;
   }
+
 
   if (
     existing.count >=
@@ -165,13 +180,16 @@ function isRateLimited(
     return true;
   }
 
+
   existing.count +=
     1;
+
 
   rateLimitStore.set(
     ip,
     existing
   );
+
 
   return false;
 }
@@ -189,6 +207,7 @@ function getText(
       name
     );
 
+
   if (
     typeof value !==
     'string'
@@ -196,79 +215,27 @@ function getText(
     return '';
   }
 
+
   return value.trim();
 }
 
 
-function isAllowedFileExtension(
-  fileName:
-    string
-) {
-  const normalized =
-    fileName
-      .trim()
-      .toLowerCase();
-
-  return (
-    normalized.endsWith(
-      '.pdf'
-    ) ||
-    normalized.endsWith(
-      '.jpg'
-    ) ||
-    normalized.endsWith(
-      '.jpeg'
-    ) ||
-    normalized.endsWith(
-      '.png'
-    ) ||
-    normalized.endsWith(
-      '.webp'
-    )
-  );
-}
-
-
-function cleanFileName(
-  value:
-    string
-) {
-  const cleaned =
-    value
-      .replace(
-        /[\u0000-\u001f\u007f]/g,
-        ''
-      )
-      .replace(
-        /[\\/]/g,
-        '_'
-      )
-      .trim();
-
-  return (
-    cleaned ||
-    'invoice'
-  ).slice(
-    0,
-    240
-  );
-}
-
-
 function buildFieldErrors(
-  issues: Array<{
-    path:
-      PropertyKey[];
+  issues:
+    Array<{
+      path:
+        PropertyKey[];
 
-    message:
-      string;
-  }>
+      message:
+        string;
+    }>
 ) {
   const fieldErrors:
     Record<
       string,
       string
     > = {};
+
 
   for (
     const issue
@@ -277,12 +244,14 @@ function buildFieldErrors(
     const firstPath =
       issue.path[0];
 
+
     if (
       typeof firstPath !==
       'string'
     ) {
       continue;
     }
+
 
     if (
       !fieldErrors[
@@ -295,6 +264,7 @@ function buildFieldErrors(
         issue.message;
     }
   }
+
 
   return fieldErrors;
 }
@@ -313,6 +283,7 @@ function parseDateOnly(
       '-'
     );
 
+
   const year =
     Number(
       yearText
@@ -327,6 +298,7 @@ function parseDateOnly(
     Number(
       dayText
     );
+
 
   return new Date(
     Date.UTC(
@@ -356,6 +328,7 @@ function getMoscowYear() {
       new Date()
     );
 
+
   return Number(
     formatted
   );
@@ -365,6 +338,7 @@ function getMoscowYear() {
 async function createRequestNumber() {
   const year =
     getMoscowYear();
+
 
   const counter =
     await prisma
@@ -389,6 +363,7 @@ async function createRequestNumber() {
         },
       });
 
+
   return `TR-${year}-${String(
     counter.value
   ).padStart(
@@ -402,8 +377,14 @@ export async function POST(
   request:
     NextRequest
 ) {
+  /*
+   * =========================================
+   * 1. АВТОРИЗАЦИЯ
+   * =========================================
+   */
   const user =
     await getCurrentUser();
+
 
   if (!user) {
     return errorResponse(
@@ -413,10 +394,16 @@ export async function POST(
   }
 
 
+  /*
+   * =========================================
+   * 2. RATE LIMIT
+   * =========================================
+   */
   const clientIp =
     getClientIp(
       request
     );
+
 
   if (
     isRateLimited(
@@ -430,13 +417,27 @@ export async function POST(
   }
 
 
+  /*
+   * =========================================
+   * 3. ЧИТАЕМ FORMDATA
+   * =========================================
+   */
   let formData:
     FormData;
+
 
   try {
     formData =
       await request.formData();
-  } catch {
+  } catch (
+    error
+  ) {
+    console.error(
+      'TRANSPORT REQUEST FORMDATA ERROR:',
+      error
+    );
+
+
     return errorResponse(
       'Не удалось прочитать данные заявки.',
       400
@@ -444,6 +445,11 @@ export async function POST(
   }
 
 
+  /*
+   * =========================================
+   * 4. СОБИРАЕМ ПОЛЯ ЗАЯВКИ
+   * =========================================
+   */
   const rawData = {
     managerEmail:
       getText(
@@ -576,11 +582,17 @@ export async function POST(
   };
 
 
+  /*
+   * =========================================
+   * 5. ПРОВЕРЯЕМ ДАННЫЕ
+   * =========================================
+   */
   const parsed =
     transportRequestSchema
       .safeParse(
         rawData
       );
+
 
   if (
     !parsed.success
@@ -590,11 +602,13 @@ export async function POST(
         parsed.error.issues
       );
 
+
     const firstMessage =
       parsed.error
         .issues[0]
         ?.message ||
       'Проверьте заполненные данные.';
+
 
     return errorResponse(
       firstMessage,
@@ -603,112 +617,16 @@ export async function POST(
     );
   }
 
+
   const data =
     parsed.data;
 
 
-  const invoiceFiles =
-    formData
-      .getAll('invoiceFile')
-      .filter(
-        (entry): entry is File =>
-          entry instanceof File
-      );
-
-  if (
-    invoiceFiles.length ===
-    0
-  ) {
-    return errorResponse(
-      'Прикрепите хотя бы один счёт.',
-      400,
-      {
-        invoiceFile:
-          'Прикрепите хотя бы один счёт.',
-      }
-    );
-  }
-
-  const MAX_INVOICE_FILES = 10;
-
-  if (
-    invoiceFiles.length >
-    MAX_INVOICE_FILES
-  ) {
-    return errorResponse(
-      `Можно прикрепить не более ${MAX_INVOICE_FILES} счетов за одну заявку.`,
-      400,
-      {
-        invoiceFile:
-          `Можно прикрепить не более ${MAX_INVOICE_FILES} счетов за одну заявку.`,
-      }
-    );
-  }
-
-  for (const invoiceFile of invoiceFiles) {
-    const fileValidation =
-      validateInvoiceFile(
-        invoiceFile
-      );
-
-    if (
-      !fileValidation.success
-    ) {
-      return errorResponse(
-        fileValidation.message,
-        400,
-        {
-          invoiceFile:
-            fileValidation.message,
-        }
-      );
-    }
-
-    if (
-      !isAllowedFileExtension(
-        invoiceFile.name
-      )
-    ) {
-      return errorResponse(
-        'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
-        400,
-        {
-          invoiceFile:
-            'Допустимы только PDF, JPG, JPEG, PNG или WEBP.',
-        }
-      );
-    }
-  }
-
-  const invoiceFileNames =
-    invoiceFiles
-      .map((file) =>
-        cleanFileName(
-          file.name
-        )
-      );
-
-  const invoiceFileName =
-    invoiceFileNames.join(', ');
-
-  const invoiceFileType =
-    invoiceFiles
-      .map(
-        (file) =>
-          file.type ||
-          'application/octet-stream'
-      )
-      .join(', ');
-
-  const invoiceFileSize =
-    invoiceFiles.reduce(
-      (total, file) =>
-        total +
-        file.size,
-      0
-    );
-
-
+  /*
+   * =========================================
+   * 6. ПРОВЕРЯЕМ ПРЕДПОЧТИТЕЛЬНЫЙ ТРАНСПОРТ
+   * =========================================
+   */
   let preferredVehicle:
     {
       id:
@@ -719,6 +637,7 @@ export async function POST(
     } |
     null =
       null;
+
 
   if (
     data.preferredVehicleTypeId
@@ -744,6 +663,7 @@ export async function POST(
           },
         });
 
+
     if (
       !preferredVehicle
     ) {
@@ -759,23 +679,32 @@ export async function POST(
   }
 
 
+  /*
+   * =========================================
+   * 7. ПРЕОБРАЗУЕМ ЧИСЛОВЫЕ ЗНАЧЕНИЯ
+   * =========================================
+   */
   const totalWeight =
     normalizeDecimalValue(
       data.totalWeight
     );
+
 
   const cargoLength =
     normalizeDecimalValue(
       data.cargoLength
     );
 
+
   const needsStakes =
     data.needsStakes ===
     'yes';
 
+
   const logisticsFitCheck =
     data.logisticsFitCheck ===
     'yes';
+
 
   const loadingDate =
     parseDateOnly(
@@ -783,8 +712,14 @@ export async function POST(
     );
 
 
+  /*
+   * =========================================
+   * 8. СОЗДАЁМ НОМЕР ЗАЯВКИ
+   * =========================================
+   */
   let requestNumber:
     string;
+
 
   try {
     requestNumber =
@@ -797,6 +732,7 @@ export async function POST(
       error
     );
 
+
     return errorResponse(
       'Не удалось создать номер заявки. Попробуйте ещё раз.',
       500
@@ -804,14 +740,33 @@ export async function POST(
   }
 
 
+  /*
+   * =========================================
+   * 9. СОЗДАЁМ ЗАЯВКУ
+   * =========================================
+   *
+   * На этом этапе счета ещё не загружаются.
+   *
+   * Они будут отправлены следующим этапом:
+   *
+   * /api/transport-request/invoice
+   *
+   * Старые invoiceFile* поля пока остаются
+   * обязательными в модели для совместимости,
+   * поэтому записываем временные значения.
+   */
   let savedRequest:
     {
       id:
         string;
 
+      requestNumber:
+        string;
+
       createdAt:
         Date;
     };
+
 
   try {
     savedRequest =
@@ -888,11 +843,14 @@ export async function POST(
             unloadingUntil:
               data.unloadingUntil,
 
-            invoiceFileName,
+            invoiceFileName:
+              'Счета загружаются отдельно',
 
-            invoiceFileType,
+            invoiceFileType:
+              'pending',
 
-            invoiceFileSize,
+            invoiceFileSize:
+              0,
 
             comment:
               data.comment ??
@@ -906,10 +864,19 @@ export async function POST(
 
             telegramSent:
               false,
+
+            telegramMessageId:
+              null,
+
+            telegramError:
+              null,
           },
 
           select: {
             id:
+              true,
+
+            requestNumber:
               true,
 
             createdAt:
@@ -924,6 +891,7 @@ export async function POST(
       error
     );
 
+
     return errorResponse(
       'Не удалось сохранить заявку. Попробуйте ещё раз.',
       500
@@ -931,242 +899,55 @@ export async function POST(
   }
 
 
-  let telegramMessageId:
-    string |
-    null =
-      null;
-
-  try {
-    const telegramResult =
-      await sendTransportRequestTextToTelegram({
-        requestNumber,
-
-        createdAt:
-          savedRequest.createdAt,
-
-        managerEmail:
-          data.managerEmail,
-
-        customer:
-          data.customer,
-
-        loadingDate,
-
-        desiredPickupTime:
-          data.desiredPickupTime ??
-          null,
-
-        preferredVehicleName:
-          preferredVehicle
-            ?.name ??
-          null,
-
-        totalWeight,
-
-        cargoLength,
-
-        needsStakes,
-
-        logisticsFitCheck,
-
-        loadingAddress:
-          data.loadingAddress ??
-          null,
-
-        loadingMapUrl:
-          data.loadingMapUrl ??
-          null,
-
-        loadingContactName:
-          data.loadingContactName,
-
-        loadingContactPhone:
-          data.loadingContactPhone,
-
-        loadingUntil:
-          data.loadingUntil,
-
-        unloadingAddress:
-          data.unloadingAddress ??
-          null,
-
-        unloadingMapUrl:
-          data.unloadingMapUrl ??
-          null,
-
-        unloadingContactName:
-          data.unloadingContactName,
-
-        unloadingContactPhone:
-          data.unloadingContactPhone,
-
-        unloadingUntil:
-          data.unloadingUntil,
-
-        invoiceFileName,
-
-        comment:
-          data.comment ??
-          null,
-      });
-
-    telegramMessageId =
-      telegramResult
-        .messageId;
-
-    await prisma
-      .transportRequest
-      .update({
-        where: {
-          id:
-            savedRequest.id,
-        },
-
-        data: {
-          telegramTextSent:
-            true,
-
-          telegramMessageId,
-        },
-      });
-  } catch (
-    error
-  ) {
-    console.error(
-      'TRANSPORT REQUEST TELEGRAM TEXT ERROR:',
-      error
-    );
-
-    await prisma
-      .transportRequest
-      .update({
-        where: {
-          id:
-            savedRequest.id,
-        },
-
-        data: {
-          telegramTextSent:
-            false,
-
-          telegramFileSent:
-            false,
-
-          telegramSent:
-            false,
-
-          telegramError:
-            'Не удалось отправить текст заявки в Telegram.',
-        },
-      })
-      .catch(
-        (
-          updateError
-        ) => {
-          console.error(
-            'TRANSPORT REQUEST STATUS UPDATE ERROR:',
-            updateError
-          );
-        }
-      );
-
-    return errorResponse(
-      'Заявка сохранена, но не удалось передать её логисту. Попробуйте отправить заявку ещё раз или обратитесь к администратору.',
-      502
-    );
-  }
-
-
-  try {
-    for (const invoiceFile of invoiceFiles) {
-      await sendTransportRequestInvoiceToTelegram({
-        requestNumber,
-
-        file:
-          invoiceFile,
-      });
-    }
-
-    await prisma
-      .transportRequest
-      .update({
-        where: {
-          id:
-            savedRequest.id,
-        },
-
-        data: {
-          telegramTextSent:
-            true,
-
-          telegramFileSent:
-            true,
-
-          telegramSent:
-            true,
-
-          telegramMessageId,
-
-          telegramError:
-            null,
-        },
-      });
-  } catch (
-    error
-  ) {
-    console.error(
-      'TRANSPORT REQUEST TELEGRAM FILE ERROR:',
-      error
-    );
-
-    await prisma
-      .transportRequest
-      .update({
-        where: {
-          id:
-            savedRequest.id,
-        },
-
-        data: {
-          telegramTextSent:
-            true,
-
-          telegramFileSent:
-            false,
-
-          telegramSent:
-            false,
-
-          telegramMessageId,
-
-          telegramError:
-            'Текст заявки отправлен, но один или несколько файлов счетов не доставлены в Telegram.',
-        },
-      })
-      .catch(
-        (
-          updateError
-        ) => {
-          console.error(
-            'TRANSPORT REQUEST STATUS UPDATE ERROR:',
-            updateError
-          );
-        }
-      );
-
-    return errorResponse(
-      'Данные заявки сохранены, но один или несколько счетов не удалось отправить в Telegram. Заявка не считается полностью отправленной.',
-      502
-    );
-  }
-
-
+  /*
+   * =========================================
+   * 10. ВОЗВРАЩАЕМ ID ДЛЯ ЗАГРУЗКИ СЧЕТОВ
+   * =========================================
+   *
+   * На клиенте после этого:
+   *
+   * 1. загружаются счета поставщика;
+   * 2. загружаются наши счета;
+   * 3. проверяется наличие минимум одного
+   *    файла каждого типа;
+   * 4. заявка финализируется.
+   */
   return NextResponse.json(
     {
       success:
         true,
 
-      requestNumber,
+      requestId:
+        savedRequest.id,
+
+      requestNumber:
+        savedRequest.requestNumber,
+
+      createdAt:
+        savedRequest.createdAt,
+
+      message:
+        'Заявка создана. Теперь необходимо загрузить счета от поставщика и наши счета.',
+
+      invoiceRequirements: {
+        supplierRequired:
+          true,
+
+        ourRequired:
+          true,
+
+        minimumSupplierFiles:
+          1,
+
+        minimumOurFiles:
+          1,
+
+        maximumSupplierFiles:
+          10,
+
+        maximumOurFiles:
+          10,
+      },
     },
     {
       status:

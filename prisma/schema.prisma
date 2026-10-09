@@ -6,6 +6,235 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  passwordHash      String
+  role              String             @default("ADMIN")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  calculations      Calculation[]
+  transportRequests TransportRequest[]
+}
+
+model VehicleType {
+  id                    String             @id @default(cuid())
+  name                  String             @unique
+  basePriceKopeks       BigInt             @default(0)
+  outsidePriceKopeks    BigInt             @default(0)
+  minPriceKopeks        BigInt             @default(0)
+  maxPayloadTons        Decimal?           @db.Decimal(8, 2)
+  bodyLengthM           Decimal?           @db.Decimal(8, 2)
+  bodyWidthM            Decimal?           @db.Decimal(8, 2)
+  maxCargoLengthM       Decimal?           @db.Decimal(8, 2)
+  overloadKopeks        BigInt             @default(0)
+  distanceMultiplier    Decimal            @default(1) @db.Decimal(6, 2)
+  isActive              Boolean            @default(true)
+  comment               String?
+  sortOrder             Int                @default(0)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  extraPointPriceKopeks BigInt             @default(0)
+  ttkSurchargeKopeks    BigInt             @default(0)
+  imageKey              String?            @default("shalanda")
+  calculations          Calculation[]
+  transportRequests     TransportRequest[]
+}
+
+model AdditionalService {
+  id         String                         @id @default(cuid())
+  name       String
+  priceType  ServicePriceType               @default(FIXED)
+  priceValue Decimal                        @db.Decimal(14, 2)
+  isActive   Boolean                        @default(true)
+  createdAt  DateTime                       @default(now())
+  updatedAt  DateTime                       @updatedAt
+  usages     CalculationAdditionalService[]
+}
+
+model AppSettings {
+  id                   String       @id @default("global")
+  companyName          String       @default("Расчет доставки")
+  phone                String?
+  currency             String       @default("RUB")
+  roundingMode         RoundingMode @default(CEIL)
+  outsideBothRule      OutsideRule  @default(FULL_OUTSIDE)
+  globalDistanceFactor Decimal      @default(1) @db.Decimal(6, 2)
+  mkadGeoJson          Json?
+  mkadSource           String?
+  updatedAt            DateTime     @updatedAt
+  ttkGeoJson           Json?
+}
+
+model Calculation {
+  id                            String                         @id @default(cuid())
+  number                        String                         @unique
+  vehicleTypeId                 String
+  cargoWeightTons               Decimal                        @db.Decimal(8, 2)
+  comment                       String?
+  totalDistanceKm               Decimal                        @db.Decimal(10, 3)
+  insideDistanceKm              Decimal                        @db.Decimal(10, 3)
+  outsideDistanceKm             Decimal                        @db.Decimal(10, 3)
+  billableDistanceKm            Decimal                        @db.Decimal(10, 3)
+  basePriceKopeksSnapshot       BigInt
+  outsideRateKopeksSnapshot     BigInt
+  distanceMultiplierSnapshot    Decimal                        @db.Decimal(6, 2)
+  servicesKopeks                BigInt                         @default(0)
+  adjustmentKopeks              BigInt                         @default(0)
+  adjustmentReason              String?
+  totalKopeks                   BigInt
+  tariffSnapshot                Json
+  routeGeoJson                  Json
+  routeStatus                   String?
+  createdAt                     DateTime                       @default(now())
+  cargoLengthM                  Decimal?                       @db.Decimal(8, 2)
+  extraPointPriceKopeksSnapshot BigInt                         @default(0)
+  extraPointsKopeks             BigInt                         @default(0)
+  subtotalBefore22Kopeks        BigInt                         @default(0)
+  surcharge22Kopeks             BigInt                         @default(0)
+  ttkSurchargeKopeks            BigInt                         @default(0)
+  ttkSurchargeKopeksSnapshot    BigInt                         @default(0)
+  userId                        String?
+  user                          User?                          @relation(fields: [userId], references: [id])
+  vehicleType                   VehicleType                    @relation(fields: [vehicleTypeId], references: [id])
+  services                      CalculationAdditionalService[]
+  points                        CalculationPoint[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model CalculationPoint {
+  id                String      @id @default(cuid())
+  calculationId     String
+  kind              PointKind
+  sortOrder         Int
+  displayAddress    String
+  normalizedAddress String
+  latitude          Decimal     @db.Decimal(10, 7)
+  longitude         Decimal     @db.Decimal(10, 7)
+  calculation       Calculation @relation(fields: [calculationId], references: [id], onDelete: Cascade)
+
+  @@index([calculationId])
+}
+
+model CalculationAdditionalService {
+  id                  String            @id @default(cuid())
+  calculationId       String
+  additionalServiceId String
+  nameSnapshot        String
+  priceTypeSnapshot   ServicePriceType
+  priceValueSnapshot  Decimal           @db.Decimal(14, 2)
+  quantity            Decimal           @default(1) @db.Decimal(10, 2)
+  amountKopeks        BigInt
+  additionalService   AdditionalService @relation(fields: [additionalServiceId], references: [id])
+  calculation         Calculation       @relation(fields: [calculationId], references: [id], onDelete: Cascade)
+
+  @@index([calculationId])
+  @@index([additionalServiceId])
+}
+
+model TransportRequestCounter {
+  id        String   @id @default(cuid())
+  year      Int      @unique
+  value     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TransportRequest {
+  id            String @id @default(cuid())
+  requestNumber String @unique
+
+  createdByUserId String?
+  managerEmail    String
+  customer        String
+
+  loadingDate       DateTime
+  desiredPickupTime String?
+
+  preferredVehicleTypeId String?
+  preferredVehicleName   String?
+
+  totalWeight Decimal @db.Decimal(10, 2)
+  cargoLength Decimal @db.Decimal(10, 2)
+
+  needsStakes       Boolean @default(false)
+  logisticsFitCheck Boolean @default(false)
+
+  loadingAddress      String?
+  loadingMapUrl       String?
+  loadingContactName  String
+  loadingContactPhone String
+  loadingUntil        String
+
+  unloadingAddress      String?
+  unloadingMapUrl       String?
+  unloadingContactName  String
+  unloadingContactPhone String
+  unloadingUntil        String
+
+  /**
+   * Старые поля оставляем для совместимости
+   * с уже созданными заявками.
+   * Для новых заявок после завершения загрузки
+   * сюда будет записываться общая сводка
+   * по всем прикреплённым счетам.
+   */
+  invoiceFileName String
+  invoiceFileType String
+  invoiceFileSize Int
+
+  comment String?
+
+  telegramTextSent  Boolean @default(false)
+  telegramFileSent  Boolean @default(false)
+  telegramSent      Boolean @default(false)
+  telegramMessageId String?
+  telegramError     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdByUser        User?                     @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  preferredVehicleType VehicleType?              @relation(fields: [preferredVehicleTypeId], references: [id], onDelete: SetNull)
+  invoices             TransportRequestInvoice[]
+
+  @@index([createdByUserId])
+  @@index([preferredVehicleTypeId])
+  @@index([createdAt])
+}
+
+model TransportRequestInvoice {
+  id                 String                      @id @default(cuid())
+  transportRequestId String
+  kind               TransportRequestInvoiceKind
+  sortOrder          Int                         @default(0)
+
+  fileName String
+  fileType String
+  fileSize Int
+
+  telegramSent      Boolean @default(false)
+  telegramMessageId String?
+  telegramError     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transportRequest TransportRequest @relation(fields: [transportRequestId], references: [id], onDelete: Cascade)
+
+  @@index([transportRequestId])
+  @@index([kind])
+  @@index([transportRequestId, kind])
+  @@index([createdAt])
+}
+
+enum TransportRequestInvoiceKind {
+  SUPPLIER
+  OUR
+}
+
 enum ServicePriceType {
   FIXED
   HOURLY
@@ -28,238 +257,4 @@ enum RoundingMode {
   NONE
   NEAREST
   CEIL
-}
-
-model User {
-  id           String @id @default(cuid())
-  email        String @unique
-  passwordHash String
-  role         String @default("ADMIN")
-
-  calculations      Calculation[]
-  transportRequests TransportRequest[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model VehicleType {
-  id   String @id @default(cuid())
-  name String @unique
-
-  imageKey String? @default("shalanda")
-
-  basePriceKopeks    BigInt @default(0)
-  outsidePriceKopeks BigInt @default(0)
-  minPriceKopeks     BigInt @default(0)
-
-  ttkSurchargeKopeks    BigInt @default(0)
-  extraPointPriceKopeks BigInt @default(0)
-
-  maxPayloadTons  Decimal? @db.Decimal(8, 2)
-  bodyLengthM     Decimal? @db.Decimal(8, 2)
-  bodyWidthM      Decimal? @db.Decimal(8, 2)
-  maxCargoLengthM Decimal? @db.Decimal(8, 2)
-
-  overloadKopeks BigInt @default(0)
-
-  distanceMultiplier Decimal @default(1) @db.Decimal(6, 2)
-
-  isActive Boolean @default(true)
-
-  comment String?
-
-  sortOrder Int @default(0)
-
-  calculations Calculation[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model AdditionalService {
-  id   String @id @default(cuid())
-  name String
-
-  priceType  ServicePriceType @default(FIXED)
-  priceValue Decimal          @db.Decimal(14, 2)
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  usages CalculationAdditionalService[]
-}
-
-model AppSettings {
-  id          String  @id @default("global")
-  companyName String  @default("Расчет доставки")
-  phone       String?
-  currency    String  @default("RUB")
-
-  roundingMode    RoundingMode @default(CEIL)
-  outsideBothRule OutsideRule  @default(FULL_OUTSIDE)
-
-  globalDistanceFactor Decimal @default(1) @db.Decimal(6, 2)
-
-  mkadGeoJson Json?
-  ttkGeoJson  Json?
-  mkadSource  String?
-
-  updatedAt DateTime @updatedAt
-}
-
-model Calculation {
-  id String @id @default(cuid())
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  number String @unique
-
-  vehicleTypeId String
-  vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id])
-
-  cargoWeightTons Decimal  @db.Decimal(8, 2)
-  cargoLengthM    Decimal? @db.Decimal(8, 2)
-
-  comment String?
-
-  totalDistanceKm    Decimal @db.Decimal(10, 3)
-  insideDistanceKm   Decimal @db.Decimal(10, 3)
-  outsideDistanceKm  Decimal @db.Decimal(10, 3)
-  billableDistanceKm Decimal @db.Decimal(10, 3)
-
-  basePriceKopeksSnapshot    BigInt
-  outsideRateKopeksSnapshot  BigInt
-  distanceMultiplierSnapshot Decimal @db.Decimal(6, 2)
-
-  ttkSurchargeKopeksSnapshot    BigInt @default(0)
-  extraPointPriceKopeksSnapshot BigInt @default(0)
-
-  ttkSurchargeKopeks BigInt @default(0)
-  extraPointsKopeks  BigInt @default(0)
-
-  subtotalBefore22Kopeks BigInt @default(0)
-  surcharge22Kopeks      BigInt @default(0)
-
-  servicesKopeks BigInt @default(0)
-
-  adjustmentKopeks  BigInt @default(0)
-  adjustmentReason  String?
-
-  totalKopeks BigInt
-
-  tariffSnapshot Json
-  routeGeoJson   Json
-  routeStatus    String?
-
-  points   CalculationPoint[]
-  services CalculationAdditionalService[]
-
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([createdAt])
-}
-
-model CalculationPoint {
-  id String @id @default(cuid())
-
-  calculationId String
-  calculation   Calculation @relation(fields: [calculationId], references: [id], onDelete: Cascade)
-
-  kind      PointKind
-  sortOrder Int
-
-  displayAddress    String
-  normalizedAddress String
-
-  latitude  Decimal @db.Decimal(10, 7)
-  longitude Decimal @db.Decimal(10, 7)
-
-  @@index([calculationId])
-}
-
-model CalculationAdditionalService {
-  id String @id @default(cuid())
-
-  calculationId String
-  calculation   Calculation @relation(fields: [calculationId], references: [id], onDelete: Cascade)
-
-  additionalServiceId String
-  additionalService   AdditionalService @relation(fields: [additionalServiceId], references: [id])
-
-  nameSnapshot       String
-  priceTypeSnapshot  ServicePriceType
-  priceValueSnapshot Decimal          @db.Decimal(14, 2)
-
-  quantity Decimal @default(1) @db.Decimal(10, 2)
-
-  amountKopeks BigInt
-
-  @@index([calculationId])
-  @@index([additionalServiceId])
-}
-
-model TransportRequestCounter {
-  year      Int      @id
-  value     Int      @default(0)
-  updatedAt DateTime @updatedAt
-}
-
-model TransportRequest {
-  id            String @id @default(cuid())
-  requestNumber String @unique
-
-  createdByUserId String?
-  createdByUser   User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-
-  managerEmail String
-
-  customer String
-
-  loadingDate       DateTime @db.Date
-  desiredPickupTime String?
-
-  preferredVehicleTypeId String?
-  preferredVehicleName   String?
-
-  totalWeight       Decimal @db.Decimal(8, 2)
-  cargoLength       Decimal @db.Decimal(8, 2)
-  needsStakes       Boolean
-  logisticsFitCheck Boolean @default(false)
-
-  loadingAddress      String?
-  loadingMapUrl       String?
-  loadingContactName  String
-  loadingContactPhone String
-  loadingUntil        String
-
-  unloadingAddress      String?
-  unloadingMapUrl       String?
-  unloadingContactName  String
-  unloadingContactPhone String
-  unloadingUntil        String
-
-  invoiceFileName String
-  invoiceFileType String
-  invoiceFileSize Int
-
-  comment String?
-
-  telegramTextSent  Boolean @default(false)
-  telegramFileSent  Boolean @default(false)
-  telegramSent      Boolean @default(false)
-  telegramMessageId String?
-  telegramError     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([createdByUserId])
-  @@index([createdAt])
-  @@index([managerEmail])
-  @@index([customer])
 }

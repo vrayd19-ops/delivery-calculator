@@ -1,24 +1,22 @@
-import type {
-  NextConfig,
-} from 'next';
-
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  reactStrictMode:
-    true,
+  reactStrictMode: true,
+
+  serverExternalPackages: [
+    'pdf-parse',
+    '@napi-rs/canvas',
+  ],
 
   /*
    * Для Docker нам нужен standalone.
    *
    * На Vercel standalone не нужен,
-   * и в Next.js 16.3.0 он сейчас
-   * конфликтует с Vercel build adapter.
+   * поэтому при сборке на Vercel output не задаём.
    */
-  output:
-    process.env.VERCEL
-      ? undefined
-      : 'standalone',
+  output: process.env.VERCEL
+    ? undefined
+    : 'standalone',
 };
-
 
 export default nextConfig;

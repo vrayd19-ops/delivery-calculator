@@ -11,6 +11,10 @@ import {
 } from 'react';
 
 import {
+  createPortal,
+} from 'react-dom';
+
+import {
   Check,
   FileText,
   Image as ImageIcon,
@@ -282,7 +286,13 @@ export default function TransportRequestForm({
   vehicles,
   defaultManagerEmail,
 }: Props) {
-  const fileInputRef =
+  const supplierFileInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
+
+
+  const ourFileInputRef =
     useRef<HTMLInputElement>(
       null
     );
@@ -356,8 +366,8 @@ export default function TransportRequestForm({
 
 
   const [
-    invoiceFiles,
-    setInvoiceFiles,
+    supplierInvoiceFiles,
+    setSupplierInvoiceFiles,
   ] =
     useState<File[]>(
       []
@@ -365,8 +375,26 @@ export default function TransportRequestForm({
 
 
   const [
-    isDragging,
-    setIsDragging,
+    ourInvoiceFiles,
+    setOurInvoiceFiles,
+  ] =
+    useState<File[]>(
+      []
+    );
+
+
+  const [
+    supplierIsDragging,
+    setSupplierIsDragging,
+  ] =
+    useState(
+      false
+    );
+
+
+  const [
+    ourIsDragging,
+    setOurIsDragging,
   ] =
     useState(
       false
@@ -415,6 +443,15 @@ export default function TransportRequestForm({
   ] =
     useState(
       false
+    );
+
+
+  const [
+    invoiceAlertMessage,
+    setInvoiceAlertMessage,
+  ] =
+    useState(
+      ''
     );
 
 
@@ -537,7 +574,12 @@ export default function TransportRequestForm({
 
 
   function chooseFiles(
-    files: File[]
+    kind:
+      'SUPPLIER' |
+      'OUR',
+
+    files:
+      File[]
   ) {
     if (
       files.length ===
@@ -546,9 +588,25 @@ export default function TransportRequestForm({
       return;
     }
 
+
+    const currentFiles =
+      kind ===
+      'SUPPLIER'
+        ? supplierInvoiceFiles
+        : ourInvoiceFiles;
+
+
     const nextFiles = [
-      ...invoiceFiles,
+      ...currentFiles,
     ];
+
+
+    const errorField =
+      kind ===
+      'SUPPLIER'
+        ? 'supplierInvoiceFiles'
+        : 'ourInvoiceFiles';
+
 
     for (const file of files) {
       const validationMessage =
@@ -556,16 +614,20 @@ export default function TransportRequestForm({
           file
         );
 
+
       if (validationMessage) {
         setFieldErrors(
           (current) => ({
             ...current,
-            invoiceFile:
+
+            [errorField]:
               validationMessage,
           })
         );
+
         continue;
       }
+
 
       const duplicate =
         nextFiles.some(
@@ -578,12 +640,35 @@ export default function TransportRequestForm({
               file.lastModified
         );
 
+
       if (!duplicate) {
         nextFiles.push(
           file
         );
       }
     }
+
+
+    const limitedFiles =
+      nextFiles.slice(
+        0,
+        10
+      );
+
+
+    if (
+      kind ===
+      'SUPPLIER'
+    ) {
+      setSupplierInvoiceFiles(
+        limitedFiles
+      );
+    } else {
+      setOurInvoiceFiles(
+        limitedFiles
+      );
+    }
+
 
     if (
       nextFiles.length >
@@ -592,26 +677,20 @@ export default function TransportRequestForm({
       setFieldErrors(
         (current) => ({
           ...current,
-          invoiceFile:
-            'Можно прикрепить не более 10 счетов за одну заявку.',
+
+          [errorField]:
+            kind ===
+            'SUPPLIER'
+              ? 'Можно прикрепить не более 10 счетов от поставщика.'
+              : 'Можно прикрепить не более 10 наших счетов.',
         })
       );
-
-      setInvoiceFiles(
-        nextFiles.slice(
-          0,
-          10
-        )
-      );
     } else {
-      setInvoiceFiles(
-        nextFiles
-      );
-
       clearFieldError(
-        'invoiceFile'
+        errorField
       );
     }
+
 
     setServerError(
       ''
@@ -620,31 +699,53 @@ export default function TransportRequestForm({
 
 
   function handleFileInput(
+    kind:
+      'SUPPLIER' |
+      'OUR',
+
     event:
       ChangeEvent<HTMLInputElement>
   ) {
     chooseFiles(
+      kind,
       Array.from(
         event.target.files ||
         []
       )
     );
 
+
     event.target.value = '';
   }
 
 
   function handleDrop(
+    kind:
+      'SUPPLIER' |
+      'OUR',
+
     event:
       DragEvent<HTMLDivElement>
   ) {
     event.preventDefault();
 
-    setIsDragging(
-      false
-    );
+
+    if (
+      kind ===
+      'SUPPLIER'
+    ) {
+      setSupplierIsDragging(
+        false
+      );
+    } else {
+      setOurIsDragging(
+        false
+      );
+    }
+
 
     chooseFiles(
+      kind,
       Array.from(
         event.dataTransfer.files
       )
@@ -653,20 +754,43 @@ export default function TransportRequestForm({
 
 
   function removeFile(
-    index: number
-  ) {
-    setInvoiceFiles(
-      (current) =>
-        current.filter(
-          (_, currentIndex) =>
-            currentIndex !==
-            index
-        )
-    );
+    kind:
+      'SUPPLIER' |
+      'OUR',
 
-    clearFieldError(
-      'invoiceFile'
-    );
+    index:
+      number
+  ) {
+    if (
+      kind ===
+      'SUPPLIER'
+    ) {
+      setSupplierInvoiceFiles(
+        (current) =>
+          current.filter(
+            (_, currentIndex) =>
+              currentIndex !==
+              index
+          )
+      );
+
+      clearFieldError(
+        'supplierInvoiceFiles'
+      );
+    } else {
+      setOurInvoiceFiles(
+        (current) =>
+          current.filter(
+            (_, currentIndex) =>
+              currentIndex !==
+              index
+          )
+      );
+
+      clearFieldError(
+        'ourInvoiceFiles'
+      );
+    }
   }
 
 
@@ -864,11 +988,20 @@ export default function TransportRequestForm({
 
 
     if (
-      invoiceFiles.length ===
+      supplierInvoiceFiles.length ===
       0
     ) {
-      errors.invoiceFile =
-        'Прикрепите хотя бы один счёт.';
+      errors.supplierInvoiceFiles =
+        'Прикрепите минимум один счёт от поставщика.';
+    }
+
+
+    if (
+      ourInvoiceFiles.length ===
+      0
+    ) {
+      errors.ourInvoiceFiles =
+        'Прикрепите минимум один наш счёт.';
     }
 
 
@@ -917,6 +1050,157 @@ export default function TransportRequestForm({
   }
 
 
+  async function uploadInvoiceFile(
+    transportRequestId:
+      string,
+
+    kind:
+      'SUPPLIER' |
+      'OUR',
+
+    file:
+      File
+  ) {
+    const invoiceFormData =
+      new FormData();
+
+
+    invoiceFormData.set(
+      'transportRequestId',
+      transportRequestId
+    );
+
+
+    invoiceFormData.set(
+      'kind',
+      kind
+    );
+
+
+    invoiceFormData.set(
+      'file',
+      file,
+      file.name
+    );
+
+
+    const response =
+      await fetch(
+        '/api/transport-request/invoice',
+        {
+          method:
+            'POST',
+
+          body:
+            invoiceFormData,
+        }
+      );
+
+
+    const result =
+      await response.json();
+
+
+    if (
+      response.status ===
+      401
+    ) {
+      window.location.href =
+        '/login';
+
+      throw new Error(
+        'Необходимо войти в систему.'
+      );
+    }
+
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      throw new Error(
+        result.message ||
+        'Не удалось отправить файл счёта.'
+      );
+    }
+
+
+    return result;
+  }
+
+
+  async function validateInvoiceBeforeSubmit(
+    kind:
+      'SUPPLIER' |
+      'OUR',
+
+    file:
+      File
+  ) {
+    const validationFormData =
+      new FormData();
+
+
+    validationFormData.set(
+      'kind',
+      kind
+    );
+
+
+    validationFormData.set(
+      'file',
+      file,
+      file.name
+    );
+
+
+    const response =
+      await fetch(
+        '/api/transport-request/invoice/validate',
+        {
+          method:
+            'POST',
+
+          body:
+            validationFormData,
+        }
+      );
+
+
+    const result =
+      await response.json();
+
+
+    if (
+      response.status ===
+      401
+    ) {
+      window.location.href =
+        '/login';
+
+      throw new Error(
+        'Необходимо войти в систему.'
+      );
+    }
+
+
+    if (
+      !response.ok ||
+      !result.success ||
+      result.accepted !==
+        true
+    ) {
+      throw new Error(
+        result.message ||
+        'Не удалось проверить счёт.'
+      );
+    }
+
+
+    return result;
+  }
+
+
   async function handleSubmit(
     event:
       FormEvent<HTMLFormElement>
@@ -936,21 +1220,14 @@ export default function TransportRequestForm({
     );
 
 
+    setInvoiceAlertMessage(
+      ''
+    );
+
+
     if (
       !validateForm()
     ) {
-      return;
-    }
-
-
-    if (
-      invoiceFiles.length ===
-      0
-    ) {
-      setShowMissingFieldsModal(
-        true
-      );
-
       return;
     }
 
@@ -961,6 +1238,41 @@ export default function TransportRequestForm({
 
 
     try {
+      /*
+       * =====================================
+       * 1. ПРЕДВАРИТЕЛЬНО ПРОВЕРЯЕМ ВСЕ СЧЕТА
+       * =====================================
+       *
+       * До этого момента заявка ещё НЕ создана
+       * и в Telegram ничего НЕ отправляется.
+       */
+      for (
+        const file
+        of supplierInvoiceFiles
+      ) {
+        await validateInvoiceBeforeSubmit(
+          'SUPPLIER',
+          file
+        );
+      }
+
+
+      for (
+        const file
+        of ourInvoiceFiles
+      ) {
+        await validateInvoiceBeforeSubmit(
+          'OUR',
+          file
+        );
+      }
+
+
+      /*
+       * =====================================
+       * 2. СОЗДАЁМ САМУ ЗАЯВКУ
+       * =====================================
+       */
       const formData =
         new FormData();
 
@@ -1106,16 +1418,7 @@ export default function TransportRequestForm({
       );
 
 
-      for (const invoiceFile of invoiceFiles) {
-        formData.append(
-          'invoiceFile',
-          invoiceFile,
-          invoiceFile.name
-        );
-      }
-
-
-      const response =
+      const createResponse =
         await fetch(
           '/api/transport-request',
           {
@@ -1128,12 +1431,12 @@ export default function TransportRequestForm({
         );
 
 
-      const result =
-        await response.json();
+      const createResult =
+        await createResponse.json();
 
 
       if (
-        response.status ===
+        createResponse.status ===
         401
       ) {
         window.location.href =
@@ -1144,21 +1447,22 @@ export default function TransportRequestForm({
 
 
       if (
-        !response.ok ||
-        !result.success
+        !createResponse.ok ||
+        !createResult.success
       ) {
         if (
-          result.fieldErrors &&
-          typeof result.fieldErrors ===
+          createResult.fieldErrors &&
+          typeof createResult.fieldErrors ===
             'object'
         ) {
           setFieldErrors(
-            result.fieldErrors
+            createResult.fieldErrors
           );
+
 
           if (
             Object.keys(
-              result.fieldErrors
+              createResult.fieldErrors
             ).length >
             0
           ) {
@@ -1170,16 +1474,131 @@ export default function TransportRequestForm({
 
 
         setServerError(
-          result.message ||
-          'Не удалось отправить заявку. Проверьте данные и попробуйте ещё раз.'
+          createResult.message ||
+          'Не удалось создать заявку. Проверьте данные и попробуйте ещё раз.'
         );
 
         return;
       }
 
 
+      const transportRequestId =
+        typeof createResult.requestId ===
+          'string'
+          ? createResult.requestId
+          : '';
+
+
+      const requestNumber =
+        typeof createResult.requestNumber ===
+          'string'
+          ? createResult.requestNumber
+          : '';
+
+
+      if (
+        !transportRequestId ||
+        !requestNumber
+      ) {
+        throw new Error(
+          'Сервер создал заявку, но не вернул её идентификатор.'
+        );
+      }
+
+
+      /*
+       * =====================================
+       * 3. СЧЕТА ОТ ПОСТАВЩИКА
+       * =====================================
+       */
+      for (
+        const file
+        of supplierInvoiceFiles
+      ) {
+        await uploadInvoiceFile(
+          transportRequestId,
+          'SUPPLIER',
+          file
+        );
+      }
+
+
+      /*
+       * =====================================
+       * 4. НАШИ СЧЕТА
+       * =====================================
+       */
+      for (
+        const file
+        of ourInvoiceFiles
+      ) {
+        await uploadInvoiceFile(
+          transportRequestId,
+          'OUR',
+          file
+        );
+      }
+
+
+      /*
+       * =====================================
+       * 5. ФИНАЛИЗИРУЕМ ЗАЯВКУ
+       * =====================================
+       */
+      const finalizeResponse =
+        await fetch(
+          '/api/transport-request/finalize',
+          {
+            method:
+              'POST',
+
+            headers: {
+              'content-type':
+                'application/json',
+            },
+
+            body:
+              JSON.stringify({
+                transportRequestId,
+
+                supplierExpectedCount:
+                  supplierInvoiceFiles.length,
+
+                ourExpectedCount:
+                  ourInvoiceFiles.length,
+              }),
+          }
+        );
+
+
+      const finalizeResult =
+        await finalizeResponse.json();
+
+
+      if (
+        finalizeResponse.status ===
+        401
+      ) {
+        window.location.href =
+          '/login';
+
+        return;
+      }
+
+
+      if (
+        !finalizeResponse.ok ||
+        !finalizeResult.success
+      ) {
+        throw new Error(
+          finalizeResult.message ||
+          'Не удалось завершить отправку заявки.'
+        );
+      }
+
+
       setSuccessNumber(
-        result.requestNumber
+        requestNumber
       );
     } catch (
       error
@@ -1190,8 +1609,19 @@ export default function TransportRequestForm({
       );
 
 
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз.';
+
+
       setServerError(
-        'Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз.'
+        errorMessage
+      );
+
+
+      setInvoiceAlertMessage(
+        errorMessage
       );
     } finally {
       setSubmitting(
@@ -1199,6 +1629,7 @@ export default function TransportRequestForm({
       );
     }
   }
+
 
 
   if (
@@ -1272,7 +1703,11 @@ export default function TransportRequestForm({
                 ''
               );
 
-              setInvoiceFiles(
+              setSupplierInvoiceFiles(
+                []
+              );
+
+              setOurInvoiceFiles(
                 []
               );
 
@@ -1349,6 +1784,11 @@ export default function TransportRequestForm({
               setShowMissingFieldsModal(
                 false
               );
+
+
+              setInvoiceAlertMessage(
+                ''
+              );
             }
           }
         >
@@ -1368,6 +1808,358 @@ export default function TransportRequestForm({
 
   return (
     <>
+      {invoiceAlertMessage &&
+        typeof document !==
+          'undefined' &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ошибка проверки счетов"
+            onClick={
+              () =>
+                setInvoiceAlertMessage(
+                  ''
+                )
+            }
+            style={{
+              position:
+                'fixed',
+
+              inset:
+                0,
+
+              zIndex:
+                100000,
+
+              display:
+                'flex',
+
+              alignItems:
+                'center',
+
+              justifyContent:
+                'center',
+
+              padding:
+                20,
+
+              background:
+                'rgba(0, 0, 0, 0.18)',
+            }}
+          >
+            <div
+              onClick={
+                (
+                  event
+                ) =>
+                  event
+                    .stopPropagation()
+              }
+              style={{
+                width:
+                  'min(92vw, 440px)',
+
+                border:
+                  '2px solid #222222',
+
+                background:
+                  '#d4d0c8',
+
+                boxShadow:
+                  '6px 7px 0 rgba(0, 0, 0, 0.28)',
+
+                fontFamily:
+                  'Tahoma, Arial, sans-serif',
+
+                color:
+                  '#111111',
+              }}
+            >
+              <div
+                style={{
+                  display:
+                    'flex',
+
+                  minHeight:
+                    34,
+
+                  alignItems:
+                    'center',
+
+                  justifyContent:
+                    'space-between',
+
+                  padding:
+                    '4px 6px 4px 10px',
+
+                  background:
+                    '#0a3b8f',
+
+                  color:
+                    '#ffffff',
+
+                  fontSize:
+                    14,
+
+                  fontWeight:
+                    700,
+
+                  letterSpacing:
+                    '0.01em',
+                }}
+              >
+                <span>
+                  Ошибка проверки счетов
+                </span>
+
+                <button
+                  type="button"
+                  aria-label="Закрыть уведомление"
+                  onClick={
+                    () =>
+                      setInvoiceAlertMessage(
+                        ''
+                      )
+                  }
+                  style={{
+                    display:
+                      'flex',
+
+                    width:
+                      24,
+
+                    height:
+                      24,
+
+                    alignItems:
+                      'center',
+
+                    justifyContent:
+                      'center',
+
+                    padding:
+                      0,
+
+                    border:
+                      '1px solid #1d1d1d',
+
+                    background:
+                      '#d4d0c8',
+
+                    color:
+                      '#111111',
+
+                    fontFamily:
+                      'Tahoma, Arial, sans-serif',
+
+                    fontSize:
+                      16,
+
+                    fontWeight:
+                      800,
+
+                    lineHeight:
+                      1,
+
+                    cursor:
+                      'pointer',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+
+              <div
+                style={{
+                  display:
+                    'grid',
+
+                  gridTemplateColumns:
+                    '48px 1fr',
+
+                  columnGap:
+                    18,
+
+                  alignItems:
+                    'start',
+
+                  padding:
+                    '28px 28px 22px',
+                }}
+              >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    display:
+                      'flex',
+
+                    width:
+                      38,
+
+                    height:
+                      38,
+
+                    alignItems:
+                      'center',
+
+                    justifyContent:
+                      'center',
+
+                    marginTop:
+                      2,
+
+                    border:
+                      '2px solid #7c5a00',
+
+                    borderRadius:
+                      '50%',
+
+                    background:
+                      '#fff3b0',
+
+                    color:
+                      '#6e4f00',
+
+                    fontSize:
+                      26,
+
+                    fontWeight:
+                      900,
+
+                    lineHeight:
+                      1,
+                  }}
+                >
+                  !
+                </div>
+
+
+                <div>
+                  <div
+                    style={{
+                      marginBottom:
+                        10,
+
+                      fontSize:
+                        14,
+
+                      fontWeight:
+                        700,
+
+                      lineHeight:
+                        1.45,
+                    }}
+                  >
+                    Проверьте счета
+                  </div>
+
+                  <div
+                    style={{
+                      marginBottom:
+                        10,
+
+                      fontSize:
+                        13,
+
+                      lineHeight:
+                        1.5,
+                    }}
+                  >
+                    {invoiceAlertMessage}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        12,
+
+                      lineHeight:
+                        1.45,
+
+                      color:
+                        '#333333',
+                    }}
+                  >
+                    Заявка не отправлена.
+                    Исправьте документы
+                    и повторите отправку.
+                  </div>
+                </div>
+              </div>
+
+
+              <div
+                style={{
+                  display:
+                    'flex',
+
+                  justifyContent:
+                    'center',
+
+                  padding:
+                    '0 24px 22px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={
+                    () =>
+                      setInvoiceAlertMessage(
+                        ''
+                      )
+                  }
+                  style={{
+                    minWidth:
+                      118,
+
+                    minHeight:
+                      34,
+
+                    padding:
+                      '4px 20px',
+
+                    borderTop:
+                      '2px solid #ffffff',
+
+                    borderLeft:
+                      '2px solid #ffffff',
+
+                    borderRight:
+                      '2px solid #4b4b4b',
+
+                    borderBottom:
+                      '2px solid #4b4b4b',
+
+                    background:
+                      '#d4d0c8',
+
+                    color:
+                      '#111111',
+
+                    fontFamily:
+                      'Tahoma, Arial, sans-serif',
+
+                    fontSize:
+                      13,
+
+                    fontWeight:
+                      600,
+
+                    cursor:
+                      'pointer',
+                  }}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+
       {showMissingFieldsModal && (
         <div
           role="dialog"
@@ -3128,7 +3920,7 @@ export default function TransportRequestForm({
                   styles.sectionTitle
                 }
               >
-                Счета на погрузку
+                Документы
               </h2>
 
               <p
@@ -3136,8 +3928,10 @@ export default function TransportRequestForm({
                   styles.sectionDescription
                 }
               >
-                Прикрепите один или несколько
-                счетов: фото, скриншоты или PDF.
+                Обязательно прикрепите минимум
+                один счёт от поставщика и минимум
+                один наш счёт. В каждом блоке
+                можно добавить несколько файлов.
               </p>
 
             </div>
@@ -3146,14 +3940,53 @@ export default function TransportRequestForm({
 
 
           <div
-            data-field="invoiceFile"
+            className={
+              styles.locationGrid
+            }
           >
 
             <div
+              data-field="supplierInvoiceFiles"
+            >
+
+            <div
+              style={{
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 750,
+                  marginBottom: 4,
+                }}
+              >
+                Счета от поставщика
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </div>
+
+              <div
+                className={
+                  styles.sectionDescription
+                }
+              >
+                Минимум 1 обязательный файл.
+                Можно добавить до 10 счетов.
+              </div>
+            </div>
+
+
+            <div
               className={
-                isDragging
+                supplierIsDragging
                   ? `${styles.dropZone} ${styles.dropZoneActive}`
-                  : fieldErrors.invoiceFile
+                  : fieldErrors.supplierInvoiceFiles
                     ? `${styles.dropZone} ${styles.dropZoneError}`
                     : styles.dropZone
               }
@@ -3163,23 +3996,29 @@ export default function TransportRequestForm({
                 ) => {
                   event.preventDefault();
 
-                  setIsDragging(
+                  setSupplierIsDragging(
                     true
                   );
                 }
               }
               onDragLeave={
                 () =>
-                  setIsDragging(
+                  setSupplierIsDragging(
                     false
                   )
               }
               onDrop={
-                handleDrop
+                (
+                  event
+                ) =>
+                  handleDrop(
+                    'SUPPLIER',
+                    event
+                  )
               }
               onClick={
                 () =>
-                  fileInputRef
+                  supplierFileInputRef
                     .current
                     ?.click()
               }
@@ -3197,7 +4036,7 @@ export default function TransportRequestForm({
                     event.key ===
                       ' '
                   ) {
-                    fileInputRef
+                    supplierFileInputRef
                       .current
                       ?.click();
                   }
@@ -3212,7 +4051,7 @@ export default function TransportRequestForm({
               />
 
               <strong>
-                Перетащите счета сюда
+                Перетащите счета поставщика сюда
                 или нажмите для выбора файлов
               </strong>
 
@@ -3221,7 +4060,7 @@ export default function TransportRequestForm({
               </span>
 
               <small>
-                До 10 счетов, каждый до 4 МБ
+                До 10 файлов, каждый до 4 МБ
               </small>
 
             </div>
@@ -3229,13 +4068,19 @@ export default function TransportRequestForm({
 
             <input
               ref={
-                fileInputRef
+                supplierFileInputRef
               }
               type="file"
               multiple
               accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
               onChange={
-                handleFileInput
+                (
+                  event
+                ) =>
+                  handleFileInput(
+                    'SUPPLIER',
+                    event
+                  )
               }
               className={
                 styles.hiddenFileInput
@@ -3243,7 +4088,7 @@ export default function TransportRequestForm({
             />
 
 
-            {invoiceFiles.length > 0 && (
+            {supplierInvoiceFiles.length > 0 && (
               <div
                 style={{
                   display: 'grid',
@@ -3251,10 +4096,10 @@ export default function TransportRequestForm({
                   marginTop: 14,
                 }}
               >
-                {invoiceFiles.map(
+                {supplierInvoiceFiles.map(
                   (file, index) => (
                     <div
-                      key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                      key={`supplier-${file.name}-${file.size}-${file.lastModified}-${index}`}
                       className={
                         styles.fileCard
                       }
@@ -3325,6 +4170,7 @@ export default function TransportRequestForm({
                           }
                           onClick={() =>
                             removeFile(
+                              'SUPPLIER',
                               index
                             )
                           }
@@ -3345,7 +4191,7 @@ export default function TransportRequestForm({
             )}
 
 
-            {fieldErrors.invoiceFile && (
+            {fieldErrors.supplierInvoiceFiles && (
               <div
                 className={
                   styles.errorText
@@ -3353,15 +4199,278 @@ export default function TransportRequestForm({
               >
                 {
                   fieldErrors
-                    .invoiceFile
+                    .supplierInvoiceFiles
                 }
               </div>
             )}
 
           </div>
 
-        </section>
 
+          <div
+            data-field="ourInvoiceFiles"
+          >
+
+            <div
+              style={{
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 750,
+                  marginBottom: 4,
+                }}
+              >
+                Наши счета
+                <span
+                  className={
+                    styles.required
+                  }
+                >
+                  *
+                </span>
+              </div>
+
+              <div
+                className={
+                  styles.sectionDescription
+                }
+              >
+                Минимум 1 обязательный файл.
+                Можно добавить до 10 наших счетов.
+              </div>
+            </div>
+
+
+            <div
+              className={
+                ourIsDragging
+                  ? `${styles.dropZone} ${styles.dropZoneActive}`
+                  : fieldErrors.ourInvoiceFiles
+                    ? `${styles.dropZone} ${styles.dropZoneError}`
+                    : styles.dropZone
+              }
+              onDragOver={
+                (
+                  event
+                ) => {
+                  event.preventDefault();
+
+                  setOurIsDragging(
+                    true
+                  );
+                }
+              }
+              onDragLeave={
+                () =>
+                  setOurIsDragging(
+                    false
+                  )
+              }
+              onDrop={
+                (
+                  event
+                ) =>
+                  handleDrop(
+                    'OUR',
+                    event
+                  )
+              }
+              onClick={
+                () =>
+                  ourFileInputRef
+                    .current
+                    ?.click()
+              }
+              role="button"
+              tabIndex={
+                0
+              }
+              onKeyDown={
+                (
+                  event
+                ) => {
+                  if (
+                    event.key ===
+                      'Enter' ||
+                    event.key ===
+                      ' '
+                  ) {
+                    ourFileInputRef
+                      .current
+                      ?.click();
+                  }
+                }
+              }
+            >
+
+              <UploadCloud
+                size={
+                  32
+                }
+              />
+
+              <strong>
+                Перетащите наши счета сюда
+                или нажмите для выбора файлов
+              </strong>
+
+              <span>
+                PDF, JPG, JPEG, PNG или WEBP
+              </span>
+
+              <small>
+                До 10 файлов, каждый до 4 МБ
+              </small>
+
+            </div>
+
+
+            <input
+              ref={
+                ourFileInputRef
+              }
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+              onChange={
+                (
+                  event
+                ) =>
+                  handleFileInput(
+                    'OUR',
+                    event
+                  )
+              }
+              className={
+                styles.hiddenFileInput
+              }
+            />
+
+
+            {ourInvoiceFiles.length > 0 && (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 10,
+                  marginTop: 14,
+                }}
+              >
+                {ourInvoiceFiles.map(
+                  (file, index) => (
+                    <div
+                      key={`our-${file.name}-${file.size}-${file.lastModified}-${index}`}
+                      className={
+                        styles.fileCard
+                      }
+                    >
+                      <div
+                        className={
+                          styles.filePreview
+                        }
+                      >
+                        {file.type.startsWith(
+                          'image/'
+                        ) ? (
+                          <ImageIcon
+                            size={
+                              28
+                            }
+                          />
+                        ) : (
+                          <FileText
+                            size={
+                              28
+                            }
+                          />
+                        )}
+                      </div>
+
+                      <div
+                        className={
+                          styles.fileInfo
+                        }
+                      >
+                        <div
+                          className={
+                            styles.fileName
+                          }
+                        >
+                          {file.name}
+                        </div>
+
+                        <div
+                          className={
+                            styles.fileMeta
+                          }
+                        >
+                          <span>
+                            {file.type || 'Файл'}
+                          </span>
+
+                          <span>·</span>
+
+                          <span>
+                            {formatFileSize(
+                              file.size
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        className={
+                          styles.fileActions
+                        }
+                      >
+                        <button
+                          type="button"
+                          className={
+                            styles.deleteButton
+                          }
+                          onClick={() =>
+                            removeFile(
+                              'OUR',
+                              index
+                            )
+                          }
+                        >
+                          <Trash2
+                            size={
+                              15
+                            }
+                          />
+
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+
+            {fieldErrors.ourInvoiceFiles && (
+              <div
+                className={
+                  styles.errorText
+                }
+              >
+                {
+                  fieldErrors
+                    .ourInvoiceFiles
+                }
+              </div>
+            )}
+
+            </div>
+
+          </div>
+
+        </section>
 
         <section
           className={
@@ -3660,14 +4769,39 @@ export default function TransportRequestForm({
               }
             >
               <span>
-                Счета
+                Счета от поставщика
               </span>
 
               <strong>
                 {
-                  invoiceFiles.length >
+                  supplierInvoiceFiles.length >
                   0
-                    ? `${invoiceFiles.length}: ${invoiceFiles
+                    ? `${supplierInvoiceFiles.length}: ${supplierInvoiceFiles
+                        .map(
+                          (file) =>
+                            file.name
+                        )
+                        .join(', ')}`
+                    : 'Не прикреплены'
+                }
+              </strong>
+            </div>
+
+
+            <div
+              className={
+                styles.reviewItem
+              }
+            >
+              <span>
+                Наши счета
+              </span>
+
+              <strong>
+                {
+                  ourInvoiceFiles.length >
+                  0
+                    ? `${ourInvoiceFiles.length}: ${ourInvoiceFiles
                         .map(
                           (file) =>
                             file.name
@@ -3705,10 +4839,9 @@ export default function TransportRequestForm({
               styles.submitNote
             }
           >
-            После отправки данные
-            заявки и прикреплённые
-            счета будут переданы
-            логисту.
+            После отправки данные заявки,
+            счета от поставщика и наши счета
+            будут переданы логисту.
           </div>
 
 

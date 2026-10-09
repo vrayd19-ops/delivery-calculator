@@ -1,0 +1,435 @@
+﻿.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.uploadGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.card {
+  padding: 24px;
+  border: 1px solid #e8e1dc;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(44, 34, 28, 0.02),
+    0 7px 24px rgba(44, 34, 28, 0.025);
+}
+
+.reviewCard {
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #fbf9f7 100%
+  );
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.sectionNumber {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #786257;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sectionTitle {
+  margin: 1px 0 0;
+  color: #2b2724;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+.sectionDescription {
+  margin: 5px 0 0;
+  color: #8a817c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dropZone {
+  display: flex;
+  min-height: 190px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 28px;
+  border: 1.5px dashed #d5c9c2;
+  border-radius: 14px;
+  background: #faf8f6;
+  color: #8a776c;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.dropZone:hover,
+.dropZoneActive {
+  border-color: #977c6e;
+  background: #f7f2ef;
+}
+
+.dropZoneActive {
+  transform: translateY(-1px);
+}
+
+.uploadIcon {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3px;
+  border: 1px solid #ddd2cc;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #756055;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dropZone strong {
+  margin-top: 3px;
+  color: #4e4540;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.dropZone span {
+  color: #8f847e;
+  font-size: 11px;
+}
+
+.dropZone small {
+  color: #aaa09a;
+  font-size: 9px;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.fileCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid #dfd6d0;
+  border-radius: 13px;
+  background: #faf8f6;
+}
+
+.filePreview {
+  display: flex;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #e3dad5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #876f62;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fileInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.fileName {
+  overflow: hidden;
+  color: #3f3834;
+  font-size: 12px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  color: #928781;
+  font-size: 9px;
+}
+
+.fileActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.smallButton,
+.deleteButton {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.smallButton {
+  border: 1px solid #dcd1cb;
+  background: #ffffff;
+  color: #655850;
+}
+
+.deleteButton {
+  border: 1px solid #ead2cf;
+  background: #fffafa;
+  color: #ad5751;
+}
+
+.smallButton:hover {
+  background: #f7f3f0;
+}
+
+.deleteButton:hover {
+  background: #fff2f1;
+}
+
+.subheading {
+  margin: 0 0 14px;
+  color: #5c5049;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.twoColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.passportGrid {
+  display: grid;
+  grid-template-columns: 0.6fr 0.8fr 1fr;
+  gap: 0 18px;
+}
+
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 17px;
+}
+
+.label {
+  color: #4a433f;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.required {
+  margin-left: 4px;
+  color: #b65c55;
+}
+
+.input {
+  width: 100%;
+  min-height: 45px;
+  box-sizing: border-box;
+  padding: 0 13px;
+  border: 1px solid #ddd4ce;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: #282421;
+  font-family: inherit;
+  font-size: 13px;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.input::placeholder {
+  color: #aaa19c;
+}
+
+.input:hover {
+  border-color: #cfc2ba;
+}
+
+.input:focus {
+  border-color: #8a7164;
+  box-shadow: 0 0 0 3px rgba(122, 99, 87, 0.1);
+}
+
+.divider {
+  height: 1px;
+  margin: 6px 0 22px;
+  background: #eee8e4;
+}
+
+.documentRule {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid #dfd5cf;
+  border-radius: 13px;
+  background: #faf7f5;
+}
+
+.documentRuleIcon {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #756055;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.documentRule strong {
+  display: block;
+  color: #4b403a;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.documentRule span {
+  display: block;
+  margin-top: 4px;
+  color: #877b74;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.submitArea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 20px 22px;
+  border: 1px solid #ded5cf;
+  border-radius: 15px;
+  background: #f7f3f0;
+}
+
+.submitNote {
+  max-width: 560px;
+  color: #847a74;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.submitButton {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 23px;
+  border: 0;
+  border-radius: 11px;
+  background: #756055;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow:
+    0 6px 18px rgba(91, 70, 59, 0.15);
+}
+
+.submitButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 980px) {
+  .uploadGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .card {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .twoColumns,
+  .passportGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fileCard {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .fileInfo {
+    min-width: calc(100% - 90px);
+  }
+
+  .fileActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .submitArea {
+    position: sticky;
+    bottom: 8px;
+    z-index: 10;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+    box-shadow:
+      0 8px 30px rgba(55, 42, 34, 0.12);
+  }
+
+  .submitButton {
+    width: 100%;
+  }
+
+  .submitNote {
+    display: none;
+  }
+}
