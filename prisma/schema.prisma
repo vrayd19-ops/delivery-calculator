@@ -150,7 +150,7 @@ model TransportRequest {
   managerEmail    String
   customer        String
 
-  loadingDate       DateTime
+  loadingDate       DateTime @db.Date
   desiredPickupTime String?
 
   preferredVehicleTypeId String?
@@ -201,6 +201,8 @@ model TransportRequest {
   invoices             TransportRequestInvoice[]
 
   @@index([createdByUserId])
+  @@index([managerEmail])
+  @@index([customer])
   @@index([preferredVehicleTypeId])
   @@index([createdAt])
 }
