@@ -64,36 +64,6 @@ type ParsedInvoiceData = {
 };
 
 
-type OcrLayoutLine = {
-  page:
-    number;
-
-  block:
-    number;
-
-  paragraph:
-    number;
-
-  line:
-    number;
-
-  text:
-    string;
-
-  left:
-    number;
-
-  top:
-    number;
-
-  right:
-    number;
-
-  bottom:
-    number;
-};
-
-
 type ExtractedDocument = {
   text:
     string;
@@ -101,36 +71,6 @@ type ExtractedDocument = {
   recognitionMethod:
     'PDF_TEXT'
     | 'OCR';
-
-  layoutLines:
-    OcrLayoutLine[];
-};
-
-
-type CachedClassification = {
-  expiresAt:
-    number;
-
-  result:
-    InvoiceClassificationResult;
-};
-
-
-type ClassifierGlobalState = {
-  cache:
-    Map<
-      string,
-      CachedClassification
-    >;
-
-  inFlight:
-    Map<
-      string,
-      Promise<InvoiceClassificationResult>
-    >;
-
-  ocrTail:
-    Promise<void>;
 };
 
 
@@ -162,33 +102,64 @@ export type InvoiceClassificationResult = {
 };
 
 
+type CachedClassification = {
+  expiresAt:
+    number;
+
+  result:
+    InvoiceClassificationResult;
+};
+
+
+type ClassifierGlobalState = {
+  cache:
+    Map<
+      string,
+      CachedClassification
+    >;
+
+  inFlight:
+    Map<
+      string,
+      Promise<InvoiceClassificationResult>
+    >;
+
+  ocrTail:
+    Promise<void>;
+};
+
+
 const OUR_COMPANY_INN =
   '9204569514';
 
 
 /*
- * На счетах реквизиты поставщика и покупателя почти всегда
- * находятся на первой странице.
+ * Для определения сторон счёта обычно достаточно
+ * первой страницы.
  *
- * Если первой страницы оказалось недостаточно,
- * допускаем OCR второй страницы, но строго последовательно.
+ * Вторая используется только если первая страница
+ * не позволила определить роль ООО «ГГС».
  */
 const OCR_PDF_PAGES =
   2;
 
 
 /*
- * Раньше использовалось 2200 px.
+ * Уменьшено с 2200 -> 1400 -> 1200.
  *
- * При лимите Northflank 256 MB такая картинка вместе с
- * PDF.js + Canvas + Tesseract могла приводить к OOMKilled.
+ * Это существенно уменьшает bitmap,
+ * создаваемый PDF.js и Canvas.
  */
 const OCR_IMAGE_WIDTH =
-  1400;
+  1200;
 
 
+/*
+ * Высокий DPI нам для определения сторон счёта
+ * не требуется.
+ */
 const OCR_DPI =
-  '200';
+  '150';
 
 
 const CLASSIFICATION_CACHE_TTL_MS =
@@ -200,13 +171,13 @@ const CLASSIFICATION_CACHE_MAX_ENTRIES =
 
 
 const CLASSIFIER_VERSION =
-  'low-memory-v1';
+  'low-memory-v2-rus-text-only';
 
 
 const LOCAL_TESSDATA_DIRECTORY =
   join(
     tmpdir(),
-    'brt-tessdata'
+    'brt-tessdata-rus'
   );
 
 
@@ -221,14 +192,10 @@ const RUS_TRAINEDDATA_SOURCE =
   );
 
 
-const ENG_TRAINEDDATA_SOURCE =
+const RUS_TRAINEDDATA_TARGET =
   join(
-    process.cwd(),
-    'node_modules',
-    '@tesseract.js-data',
-    'eng',
-    '4.0.0_best_int',
-    'eng.traineddata.gz'
+    LOCAL_TESSDATA_DIRECTORY,
+    'rus.traineddata.gz'
   );
 
 
@@ -241,20 +208,6 @@ const TESSERACT_WORKER_PATH =
     'worker-script',
     'node',
     'index.js'
-  );
-
-
-const RUS_TRAINEDDATA_TARGET =
-  join(
-    LOCAL_TESSDATA_DIRECTORY,
-    'rus.traineddata.gz'
-  );
-
-
-const ENG_TRAINEDDATA_TARGET =
-  join(
-    LOCAL_TESSDATA_DIRECTORY,
-    'eng.traineddata.gz'
   );
 
 
@@ -525,9 +478,6 @@ function findFirstRegex(
 
     length:
       match[0].length,
-
-    text:
-      match[0],
   };
 }
 
@@ -593,7 +543,7 @@ function extractRoleSection(
     Math.min(
       text.length,
       contentStart +
-        1000
+        1200
     );
 
 
@@ -697,575 +647,35 @@ function looksLikeInvoice(
       /покупатель/i.test(
         text
       )
+    ) ||
+    (
+      /поставщик/i.test(
+        text
+      ) &&
+      /заказчик/i.test(
+        text
+      )
     )
   );
 }
 
 
-function classifyRoleText(
-  value:
+function sectionContainsOurInn(
+  section:
     string
-): OurCompanyRole {
-  if (
-    /Покупатель|Заказчик/i.test(
-      value
-    )
-  ) {
-    return 'BUYER';
-  }
-
-
-  if (
-    /Поставщик|Исполнитель/i.test(
-      value
-    )
-  ) {
-    return 'SUPPLIER';
-  }
-
-
-  return 'UNKNOWN';
-}
-
-
-function parseTsvLines(
-  tsv:
-    string,
-
-  pageOffset:
-    number
-): OcrLayoutLine[] {
-  if (
-    !tsv.trim()
-  ) {
-    return [];
-  }
-
-
-  type MutableLine = {
-    page:
-      number;
-
-    block:
-      number;
-
-    paragraph:
-      number;
-
-    line:
-      number;
-
-    words:
-      string[];
-
-    left:
-      number;
-
-    top:
-      number;
-
-    right:
-      number;
-
-    bottom:
-      number;
-  };
-
-
-  const groups =
-    new Map<
-      string,
-      MutableLine
-    >();
-
-
-  const rows =
-    tsv
-      .split(
-        /\r?\n/
-      )
-      .slice(
-        1
-      );
-
-
-  for (
-    const row of rows
-  ) {
-    if (
-      !row.trim()
-    ) {
-      continue;
-    }
-
-
-    const columns =
-      row.split(
-        '\t'
-      );
-
-
-    if (
-      columns.length <
-      12
-    ) {
-      continue;
-    }
-
-
-    const level =
-      Number(
-        columns[0]
-      );
-
-
-    if (
-      level !==
-      5
-    ) {
-      continue;
-    }
-
-
-    const page =
-      Number(
-        columns[1]
-      ) +
-      pageOffset;
-
-
-    const block =
-      Number(
-        columns[2]
-      );
-
-
-    const paragraph =
-      Number(
-        columns[3]
-      );
-
-
-    const line =
-      Number(
-        columns[4]
-      );
-
-
-    const left =
-      Number(
-        columns[6]
-      );
-
-
-    const top =
-      Number(
-        columns[7]
-      );
-
-
-    const width =
-      Number(
-        columns[8]
-      );
-
-
-    const height =
-      Number(
-        columns[9]
-      );
-
-
-    const word =
-      columns
-        .slice(
-          11
-        )
-        .join(
-          '\t'
-        )
-        .trim();
-
-
-    if (
-      !word
-    ) {
-      continue;
-    }
-
-
-    if (
-      !Number.isFinite(
-        left
-      ) ||
-      !Number.isFinite(
-        top
-      ) ||
-      !Number.isFinite(
-        width
-      ) ||
-      !Number.isFinite(
-        height
-      )
-    ) {
-      continue;
-    }
-
-
-    const key =
-      [
-        page,
-        block,
-        paragraph,
-        line,
-      ].join(
-        ':'
-      );
-
-
-    const right =
-      left +
-      width;
-
-
-    const bottom =
-      top +
-      height;
-
-
-    const existing =
-      groups.get(
-        key
-      );
-
-
-    if (
-      existing
-    ) {
-      existing.words.push(
-        word
-      );
-
-      existing.left =
-        Math.min(
-          existing.left,
-          left
-        );
-
-      existing.top =
-        Math.min(
-          existing.top,
-          top
-        );
-
-      existing.right =
-        Math.max(
-          existing.right,
-          right
-        );
-
-      existing.bottom =
-        Math.max(
-          existing.bottom,
-          bottom
-        );
-
-      continue;
-    }
-
-
-    groups.set(
-      key,
-      {
-        page,
-        block,
-        paragraph,
-        line,
-        words:
-          [
-            word,
-          ],
-        left,
-        top,
-        right,
-        bottom,
-      }
-    );
-  }
-
-
-  return Array.from(
-    groups.values()
-  )
-    .map(
-      (
-        item
-      ) => ({
-        page:
-          item.page,
-
-        block:
-          item.block,
-
-        paragraph:
-          item.paragraph,
-
-        line:
-          item.line,
-
-        text:
-          item.words
-            .join(
-              ' '
-            ),
-
-        left:
-          item.left,
-
-        top:
-          item.top,
-
-        right:
-          item.right,
-
-        bottom:
-          item.bottom,
-      })
-    )
-    .sort(
-      (
-        a,
-        b
-      ) => {
-        if (
-          a.page !==
-          b.page
-        ) {
-          return (
-            a.page -
-            b.page
-          );
-        }
-
-
-        if (
-          a.top !==
-          b.top
-        ) {
-          return (
-            a.top -
-            b.top
-          );
-        }
-
-
-        return (
-          a.left -
-          b.left
-        );
-      }
-    );
-}
-
-
-function lineContainsOurInn(
-  line:
-    OcrLayoutLine
 ) {
-  return normalizeInn(
-    line.text
+  return extractAllInns(
+    section
   ).includes(
     OUR_COMPANY_INN
   );
 }
 
 
-function lineCenterY(
-  line:
-    OcrLayoutLine
-) {
-  return (
-    line.top +
-    line.bottom
-  ) / 2;
-}
-
-
-function lineHeight(
-  line:
-    OcrLayoutLine
-) {
-  return Math.max(
-    1,
-    line.bottom -
-      line.top
-  );
-}
-
-
-function detectOurCompanyRoleFromLayout(
-  lines:
-    OcrLayoutLine[]
-): OurCompanyRole {
-  if (
-    lines.length ===
-    0
-  ) {
-    return 'UNKNOWN';
-  }
-
-
-  const ourInnLines =
-    lines.filter(
-      lineContainsOurInn
-    );
-
-
-  if (
-    ourInnLines.length ===
-    0
-  ) {
-    return 'UNKNOWN';
-  }
-
-
-  const roleLines =
-    lines
-      .map(
-        (
-          line
-        ) => ({
-          line,
-
-          role:
-            classifyRoleText(
-              line.text
-            ),
-        })
-      )
-      .filter(
-        (
-          item
-        ) =>
-          item.role !==
-          'UNKNOWN'
-      );
-
-
-  for (
-    const ourLine of
-      ourInnLines
-  ) {
-    const sameLineRole =
-      classifyRoleText(
-        ourLine.text
-      );
-
-
-    if (
-      sameLineRole !==
-      'UNKNOWN'
-    ) {
-      return sameLineRole;
-    }
-
-
-    const candidates =
-      roleLines
-        .filter(
-          (
-            item
-          ) =>
-            item.line.page ===
-            ourLine.page
-        )
-        .map(
-          (
-            item
-          ) => {
-            const verticalDistance =
-              Math.abs(
-                lineCenterY(
-                  item.line
-                ) -
-                lineCenterY(
-                  ourLine
-                )
-              );
-
-
-            const horizontalPenalty =
-              item.line.left <=
-                ourLine.left
-                ? 0
-                : 40;
-
-
-            return {
-              ...item,
-
-              verticalDistance,
-
-              score:
-                verticalDistance +
-                horizontalPenalty,
-            };
-          }
-        )
-        .sort(
-          (
-            a,
-            b
-          ) =>
-            a.score -
-            b.score
-        );
-
-
-    const best =
-      candidates[0];
-
-
-    if (
-      !best
-    ) {
-      continue;
-    }
-
-
-    const allowedVerticalDistance =
-      Math.max(
-        120,
-        lineHeight(
-          ourLine
-        ) *
-          4
-      );
-
-
-    if (
-      best.verticalDistance <=
-      allowedVerticalDistance
-    ) {
-      return best.role;
-    }
-  }
-
-
-  return 'UNKNOWN';
-}
-
-
-function detectOurCompanyRoleFromText(
-  rawText:
+function detectOurCompanyRoleFromSections(
+  text:
     string
 ): OurCompanyRole {
-  const text =
-    normalizeDocumentText(
-      rawText
-    );
-
-
   const supplierSection =
     extractRoleSection(
       text,
@@ -1281,18 +691,14 @@ function detectOurCompanyRoleFromText(
 
 
   const supplierHasOurInn =
-    normalizeInn(
+    sectionContainsOurInn(
       supplierSection
-    ).includes(
-      OUR_COMPANY_INN
     );
 
 
   const buyerHasOurInn =
-    normalizeInn(
+    sectionContainsOurInn(
       buyerSection
-    ).includes(
-      OUR_COMPANY_INN
     );
 
 
@@ -1316,44 +722,220 @@ function detectOurCompanyRoleFromText(
 }
 
 
-function detectOurCompanyRole(
-  rawText:
-    string,
+function findOurInnIndex(
+  text:
+    string
+) {
+  const patterns = [
+    /9204569514/,
+    /9204[\s\-]*569[\s\-]*514/,
+    /9204[\s\-]*56[\s\-]*9514/,
+  ];
 
-  layoutLines:
-    OcrLayoutLine[]
-): OurCompanyRole {
-  if (
-    layoutLines.length >
-    0
+
+  for (
+    const pattern of patterns
   ) {
-    const layoutRole =
-      detectOurCompanyRoleFromLayout(
-        layoutLines
+    const match =
+      pattern.exec(
+        text
       );
 
 
     if (
-      layoutRole !==
-      'UNKNOWN'
+      match &&
+      match.index !==
+        undefined
     ) {
-      return layoutRole;
+      return match.index;
     }
   }
 
 
-  return detectOurCompanyRoleFromText(
-    rawText
+  return -1;
+}
+
+
+function detectOurCompanyRoleFromContext(
+  text:
+    string
+): OurCompanyRole {
+  const innIndex =
+    findOurInnIndex(
+      text
+    );
+
+
+  if (
+    innIndex <
+    0
+  ) {
+    return 'UNKNOWN';
+  }
+
+
+  const contextStart =
+    Math.max(
+      0,
+      innIndex -
+        700
+    );
+
+
+  const contextEnd =
+    Math.min(
+      text.length,
+      innIndex +
+        700
+    );
+
+
+  const context =
+    text.slice(
+      contextStart,
+      contextEnd
+    );
+
+
+  const relativeInnIndex =
+    innIndex -
+    contextStart;
+
+
+  const beforeInn =
+    context
+      .slice(
+        0,
+        relativeInnIndex
+      )
+      .toLowerCase();
+
+
+  const supplierWords = [
+    'поставщик',
+    'исполнитель',
+  ];
+
+
+  const buyerWords = [
+    'покупатель',
+    'заказчик',
+  ];
+
+
+  let supplierDistance =
+    Number.POSITIVE_INFINITY;
+
+
+  let buyerDistance =
+    Number.POSITIVE_INFINITY;
+
+
+  for (
+    const word of supplierWords
+  ) {
+    const index =
+      beforeInn
+        .lastIndexOf(
+          word
+        );
+
+
+    if (
+      index >=
+      0
+    ) {
+      supplierDistance =
+        Math.min(
+          supplierDistance,
+          beforeInn.length -
+            index
+        );
+    }
+  }
+
+
+  for (
+    const word of buyerWords
+  ) {
+    const index =
+      beforeInn
+        .lastIndexOf(
+          word
+        );
+
+
+    if (
+      index >=
+      0
+    ) {
+      buyerDistance =
+        Math.min(
+          buyerDistance,
+          beforeInn.length -
+            index
+        );
+    }
+  }
+
+
+  if (
+    buyerDistance <
+      supplierDistance &&
+    buyerDistance <=
+      500
+  ) {
+    return 'BUYER';
+  }
+
+
+  if (
+    supplierDistance <
+      buyerDistance &&
+    supplierDistance <=
+      500
+  ) {
+    return 'SUPPLIER';
+  }
+
+
+  return 'UNKNOWN';
+}
+
+
+function detectOurCompanyRole(
+  rawText:
+    string
+): OurCompanyRole {
+  const text =
+    normalizeDocumentText(
+      rawText
+    );
+
+
+  const sectionRole =
+    detectOurCompanyRoleFromSections(
+      text
+    );
+
+
+  if (
+    sectionRole !==
+    'UNKNOWN'
+  ) {
+    return sectionRole;
+  }
+
+
+  return detectOurCompanyRoleFromContext(
+    text
   );
 }
 
 
 function parseInvoiceText(
   rawText:
-    string,
-
-  layoutLines:
-    OcrLayoutLine[]
+    string
 ): ParsedInvoiceData {
   const text =
     normalizeDocumentText(
@@ -1406,8 +988,7 @@ function parseInvoiceText(
 
   const ourCompanyRole =
     detectOurCompanyRole(
-      text,
-      layoutLines
+      text
     );
 
 
@@ -1473,25 +1054,21 @@ function detectInvoiceKind(
     ParsedInvoiceData,
 
   rawText:
-    string,
-
-  layoutLines:
-    OcrLayoutLine[]
+    string
 ): DetectedInvoiceKind {
-  if (
-    !data.isInvoice
-  ) {
-    return 'UNKNOWN';
-  }
-
-
   const ourCompanyRole =
     detectOurCompanyRole(
-      rawText,
-      layoutLines
+      rawText
     );
 
 
+  /*
+   * Если роль ООО «ГГС» определена однозначно,
+   * этого достаточно для классификации.
+   *
+   * OCR может плохо прочитать слово «счёт»,
+   * но хорошо распознать Покупателя / Поставщика и ИНН.
+   */
   if (
     ourCompanyRole ===
       'BUYER'
@@ -1505,6 +1082,13 @@ function detectInvoiceKind(
       'SUPPLIER'
   ) {
     return 'OUR';
+  }
+
+
+  if (
+    !data.isInvoice
+  ) {
+    return 'UNKNOWN';
   }
 
 
@@ -1574,17 +1158,16 @@ async function prepareLocalTessdata() {
   );
 
 
-  await Promise.all([
-    copyFile(
-      RUS_TRAINEDDATA_SOURCE,
-      RUS_TRAINEDDATA_TARGET
-    ),
-
-    copyFile(
-      ENG_TRAINEDDATA_SOURCE,
-      ENG_TRAINEDDATA_TARGET
-    ),
-  ]);
+  /*
+   * Копируем только русский язык.
+   *
+   * Раньше одновременно загружались rus + eng,
+   * что значительно увеличивало использование памяти.
+   */
+  await copyFile(
+    RUS_TRAINEDDATA_SOURCE,
+    RUS_TRAINEDDATA_TARGET
+  );
 
 
   return LOCAL_TESSDATA_DIRECTORY;
@@ -1643,10 +1226,7 @@ async function withOcrLock<T>(
 
 async function recognizeSingleImage(
   image:
-    Buffer,
-
-  pageOffset =
-    0
+    Buffer
 ) {
   return withOcrLock(
     async () => {
@@ -1654,12 +1234,19 @@ async function recognizeSingleImage(
         await getLocalTessdataDirectory();
 
 
+      console.log(
+        'INVOICE OCR: starting low-memory Russian worker'
+      );
+
+
+      /*
+       * Только rus.
+       *
+       * Английская модель больше не загружается.
+       */
       const worker =
         await createWorker(
-          [
-            'rus',
-            'eng',
-          ],
+          'rus',
           OEM.LSTM_ONLY,
           {
             langPath,
@@ -1696,17 +1283,26 @@ async function recognizeSingleImage(
       try {
         await worker
           .setParameters({
+            /*
+             * SPARSE_TEXT обычно легче для документов,
+             * где нам нужно найти отдельные строки и реквизиты,
+             * а не идеально восстановить всю верстку.
+             */
             tessedit_pageseg_mode:
-              PSM.AUTO,
-
-            preserve_interword_spaces:
-              '1',
+              PSM.SPARSE_TEXT,
 
             user_defined_dpi:
               OCR_DPI,
           });
 
 
+        /*
+         * Запрашиваем только text.
+         *
+         * TSV раньше создавал дополнительные данные
+         * с координатами каждого слова и увеличивал
+         * расход памяти.
+         */
         const result =
           await worker
             .recognize(
@@ -1718,32 +1314,22 @@ async function recognizeSingleImage(
               {
                 text:
                   true,
-
-                tsv:
-                  true,
               }
             );
 
 
-        const tsv =
-          result.data.tsv ??
-          '';
-
-
-        return {
-          text:
-            result.data.text
-              .trim(),
-
-          layoutLines:
-            parseTsvLines(
-              tsv,
-              pageOffset
-            ),
-        };
+        return normalizeDocumentText(
+          result.data.text ??
+            ''
+        );
       } finally {
         await worker
           .terminate();
+
+
+        console.log(
+          'INVOICE OCR: worker terminated'
+        );
       }
     }
   );
@@ -1756,16 +1342,14 @@ function inspectDocument(
 ) {
   const parsed =
     parseInvoiceText(
-      document.text,
-      document.layoutLines
+      document.text
     );
 
 
   const detectedKind =
     detectInvoiceKind(
       parsed,
-      document.text,
-      document.layoutLines
+      document.text
     );
 
 
@@ -1791,8 +1375,8 @@ async function extractPdfDirectText(
 
   try {
     /*
-     * Для определения поставщика/покупателя нет необходимости
-     * читать весь многостраничный PDF.
+     * Для определения сторон документа нам нужны
+     * максимум первые две страницы.
      */
     const textResult =
       await parser
@@ -1831,10 +1415,10 @@ async function renderPdfPage(
 
   try {
     /*
-     * Важный момент для памяти:
+     * Рендерим строго одну страницу.
      *
-     * рендерим только ОДНУ страницу.
-     * Не создаём массив изображений двух страниц по 2200 px.
+     * Благодаря этому в памяти никогда не находятся
+     * PNG двух страниц одновременно.
      */
     const screenshotResult =
       await parser
@@ -1867,25 +1451,48 @@ async function renderPdfPage(
     }
 
 
-    /*
-     * Получаем PNG до destroy().
-     *
-     * После выхода из этой функции PDF.js и canvas будут
-     * полностью уничтожены ДО запуска Tesseract.
-     */
     if (
       Buffer.isBuffer(
         page.data
       )
     ) {
-      return page.data;
+      return Buffer.from(
+        page.data
+      );
     }
 
 
     return Buffer.from(
       page.data
     );
+  } catch (
+    error
+  ) {
+    /*
+     * Если запросили страницу, которой нет,
+     * просто прекращаем OCR следующих страниц.
+     */
+    if (
+      pageNumber >
+      1
+    ) {
+      console.warn(
+        'INVOICE PDF PAGE RENDER SKIPPED:',
+        pageNumber,
+        error
+      );
+
+
+      return null;
+    }
+
+
+    throw error;
   } finally {
+    /*
+     * Критически важно:
+     * PDF.js уничтожается до запуска Tesseract.
+     */
     await parser
       .destroy();
   }
@@ -1897,9 +1504,10 @@ async function extractPdfText(
     Buffer
 ): Promise<ExtractedDocument> {
   /*
-   * 1. Сначала дешёвый текстовый слой.
+   * ЭТАП 1
    *
-   * PDF.js после этой функции уже уничтожен.
+   * Сначала пробуем обычный текст PDF.
+   * Для цифровых счетов OCR вообще не запускается.
    */
   const directText =
     await extractPdfDirectText(
@@ -1918,9 +1526,6 @@ async function extractPdfText(
 
         recognitionMethod:
           'PDF_TEXT',
-
-        layoutLines:
-          [],
       };
 
 
@@ -1946,21 +1551,13 @@ async function extractPdfText(
 
 
   /*
-   * 2. Если текстового слоя недостаточно — OCR.
+   * ЭТАП 2
    *
-   * Каждая страница проходит:
-   *
-   * PDF -> PNG -> destroy PDF.js -> OCR -> terminate Tesseract.
-   *
-   * PDF.js и Tesseract не должны одновременно удерживать
-   * тяжёлые структуры в памяти.
+   * Только если обычного текста недостаточно,
+   * запускаем OCR.
    */
   let combinedText =
     '';
-
-  const combinedLayoutLines:
-    OcrLayoutLine[] =
-    [];
 
 
   for (
@@ -1991,24 +1588,23 @@ async function extractPdfText(
     }
 
 
-    const ocr =
+    /*
+     * К моменту вызова recognizeSingleImage()
+     * parser PDF.js уже destroy().
+     */
+    const pageText =
       await recognizeSingleImage(
-        image,
-        (
-          pageNumber -
-          1
-        ) *
-          1000
+        image
       );
 
 
     if (
-      ocr.text
+      pageText
     ) {
       combinedText =
         [
           combinedText,
-          ocr.text,
+          pageText,
         ]
           .filter(
             Boolean
@@ -2019,11 +1615,6 @@ async function extractPdfText(
     }
 
 
-    combinedLayoutLines.push(
-      ...ocr.layoutLines
-    );
-
-
     const currentDocument:
       ExtractedDocument =
       {
@@ -2032,9 +1623,6 @@ async function extractPdfText(
 
         recognitionMethod:
           'OCR',
-
-        layoutLines:
-          combinedLayoutLines,
       };
 
 
@@ -2045,8 +1633,9 @@ async function extractPdfText(
 
 
     /*
-     * Как только роль ГГС определена, вторую страницу
-     * вообще не рендерим.
+     * Если уже после первой страницы понятно,
+     * где находится ООО «ГГС», вторую страницу
+     * не рендерим и не распознаём.
      */
     if (
       currentInspection
@@ -2070,9 +1659,6 @@ async function extractPdfText(
 
     recognitionMethod:
       'OCR',
-
-    layoutLines:
-      combinedLayoutLines,
   };
 }
 
@@ -2081,21 +1667,17 @@ async function extractImageText(
   buffer:
     Buffer
 ): Promise<ExtractedDocument> {
-  const ocr =
+  const text =
     await recognizeSingleImage(
       buffer
     );
 
 
   return {
-    text:
-      ocr.text,
+    text,
 
     recognitionMethod:
       'OCR',
-
-    layoutLines:
-      ocr.layoutLines,
   };
 }
 
@@ -2183,16 +1765,14 @@ function buildClassificationResult(
 
   const parsed =
     parseInvoiceText(
-      input.extracted.text,
-      input.extracted.layoutLines
+      input.extracted.text
     );
 
 
   const detectedKind =
     detectInvoiceKind(
       parsed,
-      input.extracted.text,
-      input.extracted.layoutLines
+      input.extracted.text
     );
 
 
@@ -2203,8 +1783,7 @@ function buildClassificationResult(
 
   const ourCompanyRole =
     detectOurCompanyRole(
-      input.extracted.text,
-      input.extracted.layoutLines
+      input.extracted.text
     );
 
 
@@ -2240,52 +1819,9 @@ function buildClassificationResult(
       buyerInn:
         parsed.buyerInn,
 
-      /*
-       * Не выводим в лог сотни OCR-строк.
-       * Оставляем максимум 20 диагностических строк.
-       */
-      layoutLinesNearOurInn:
+      textLength:
         input.extracted
-          .layoutLines
-          .filter(
-            (
-              line
-            ) =>
-              lineContainsOurInn(
-                line
-              ) ||
-              classifyRoleText(
-                line.text
-              ) !==
-                'UNKNOWN'
-          )
-          .slice(
-            0,
-            20
-          )
-          .map(
-            (
-              line
-            ) => ({
-              page:
-                line.page,
-
-              text:
-                line.text,
-
-              left:
-                line.left,
-
-              top:
-                line.top,
-
-              right:
-                line.right,
-
-              bottom:
-                line.bottom,
-            })
-          ),
+          .text.length,
     }
   );
 
@@ -2430,7 +1966,7 @@ export async function classifyTransportRequestInvoice(
   }
 ): Promise<InvoiceClassificationResult> {
   /*
-   * Читаем файл только один раз.
+   * Читаем файл один раз.
    */
   const buffer =
     Buffer.from(
@@ -2440,11 +1976,11 @@ export async function classifyTransportRequestInvoice(
 
 
   /*
-   * validate и последующий /invoice получают один и тот же
-   * файл повторно.
+   * Кэшируем классификацию одного и того же файла.
    *
-   * Поэтому используем SHA-256 и не запускаем OCR второй раз
-   * в течение короткого промежутка.
+   * Это важно потому, что файл может сначала пройти
+   * /invoice/validate, а затем снова отправиться в
+   * /invoice.
    */
   const fileHash =
     createHash(
@@ -2495,8 +2031,8 @@ export async function classifyTransportRequestInvoice(
 
 
   /*
-   * Если браузер случайно отправил два одинаковых запроса
-   * одновременно, второй не создаёт второй Tesseract worker.
+   * Если одновременно прилетело несколько одинаковых
+   * запросов, не создаём несколько OCR worker.
    */
   const existingInFlight =
     classifierState
