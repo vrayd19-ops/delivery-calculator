@@ -1,4 +1,8 @@
 import {
+  createHash,
+} from 'node:crypto';
+
+import {
   copyFile,
   mkdir,
 } from 'node:fs/promises';
@@ -103,6 +107,33 @@ type ExtractedDocument = {
 };
 
 
+type CachedClassification = {
+  expiresAt:
+    number;
+
+  result:
+    InvoiceClassificationResult;
+};
+
+
+type ClassifierGlobalState = {
+  cache:
+    Map<
+      string,
+      CachedClassification
+    >;
+
+  inFlight:
+    Map<
+      string,
+      Promise<InvoiceClassificationResult>
+    >;
+
+  ocrTail:
+    Promise<void>;
+};
+
+
 export type InvoiceClassificationResult = {
   accepted:
     boolean;
@@ -135,12 +166,41 @@ const OUR_COMPANY_INN =
   '9204569514';
 
 
+/*
+ * На счетах реквизиты поставщика и покупателя почти всегда
+ * находятся на первой странице.
+ *
+ * Если первой страницы оказалось недостаточно,
+ * допускаем OCR второй страницы, но строго последовательно.
+ */
 const OCR_PDF_PAGES =
   2;
 
 
+/*
+ * Раньше использовалось 2200 px.
+ *
+ * При лимите Northflank 256 MB такая картинка вместе с
+ * PDF.js + Canvas + Tesseract могла приводить к OOMKilled.
+ */
 const OCR_IMAGE_WIDTH =
-  2200;
+  1400;
+
+
+const OCR_DPI =
+  '200';
+
+
+const CLASSIFICATION_CACHE_TTL_MS =
+  10 * 60 * 1000;
+
+
+const CLASSIFICATION_CACHE_MAX_ENTRIES =
+  30;
+
+
+const CLASSIFIER_VERSION =
+  'low-memory-v1';
 
 
 const LOCAL_TESSDATA_DIRECTORY =
@@ -202,6 +262,40 @@ let prepareTessdataPromise:
   Promise<string> |
   null =
     null;
+
+
+const globalForClassifier =
+  globalThis as typeof globalThis & {
+    transportRequestInvoiceClassifierState?:
+      ClassifierGlobalState;
+  };
+
+
+const classifierState:
+  ClassifierGlobalState =
+    globalForClassifier
+      .transportRequestInvoiceClassifierState ??
+    {
+      cache:
+        new Map<
+          string,
+          CachedClassification
+        >(),
+
+      inFlight:
+        new Map<
+          string,
+          Promise<InvoiceClassificationResult>
+        >(),
+
+      ocrTail:
+        Promise.resolve(),
+    };
+
+
+globalForClassifier
+  .transportRequestInvoiceClassifierState =
+  classifierState;
 
 
 function normalizeDocumentText(
@@ -1042,6 +1136,7 @@ function detectOurCompanyRoleFromLayout(
           line
         ) => ({
           line,
+
           role:
             classifyRoleText(
               line.text
@@ -1509,171 +1604,182 @@ function getLocalTessdataDirectory() {
 }
 
 
-async function recognizeImages(
-  images:
-    Buffer[]
-) {
-  if (
-    images.length ===
-    0
-  ) {
-    return {
-      text:
-        '',
-
-      layoutLines:
-        [] as OcrLayoutLine[],
-    };
-  }
+async function withOcrLock<T>(
+  task:
+    () => Promise<T>
+): Promise<T> {
+  const previous =
+    classifierState
+      .ocrTail;
 
 
-  const langPath =
-    await getLocalTessdataDirectory();
+  let release:
+    () => void =
+      () => {};
 
 
-  const worker =
-    await createWorker(
-      [
-        'rus',
-        'eng',
-      ],
-      OEM.LSTM_ONLY,
-      {
-        langPath,
-
-        workerPath:
-          TESSERACT_WORKER_PATH,
-
-        gzip:
-          true,
-
-        cacheMethod:
-          'none',
-
-        logger: (
-          message
-        ) => {
-          if (
-            message.status ===
-            'recognizing text'
-          ) {
-            console.log(
-              'INVOICE OCR:',
-              `${Math.round(
-                message.progress *
-                  100
-              )}%`
-            );
-          }
-        },
+  classifierState
+    .ocrTail =
+    new Promise<void>(
+      (
+        resolve
+      ) => {
+        release =
+          resolve;
       }
     );
 
 
+  await previous;
+
+
   try {
-    await worker
-      .setParameters({
-        tessedit_pageseg_mode:
-          PSM.AUTO,
-
-        preserve_interword_spaces:
-          '1',
-
-        user_defined_dpi:
-          '300',
-      });
-
-
-    const texts:
-      string[] =
-        [];
-
-
-    const layoutLines:
-      OcrLayoutLine[] =
-        [];
-
-
-    for (
-      let imageIndex =
-        0;
-      imageIndex <
-        images.length;
-      imageIndex +=
-        1
-    ) {
-      const result =
-        await worker
-          .recognize(
-            images[
-              imageIndex
-            ],
-            {
-              rotateAuto:
-                true,
-            },
-            {
-              text:
-                true,
-
-              tsv:
-                true,
-            }
-          );
-
-
-      if (
-        result.data.text
-          .trim()
-      ) {
-        texts.push(
-          result.data.text
-        );
-      }
-
-
-      const tsv =
-        result.data.tsv ??
-        '';
-
-
-      layoutLines.push(
-        ...parseTsvLines(
-          tsv,
-          imageIndex *
-            1000
-        )
-      );
-    }
-
-
-    return {
-      text:
-        texts
-          .join(
-            '\n\n'
-          )
-          .trim(),
-
-      layoutLines,
-    };
+    return await task();
   } finally {
-    await worker
-      .terminate();
+    release();
   }
 }
 
 
-async function extractPdfText(
-  file:
-    File
-): Promise<ExtractedDocument> {
-  const buffer =
-    Buffer.from(
-      await file.arrayBuffer()
+async function recognizeSingleImage(
+  image:
+    Buffer,
+
+  pageOffset =
+    0
+) {
+  return withOcrLock(
+    async () => {
+      const langPath =
+        await getLocalTessdataDirectory();
+
+
+      const worker =
+        await createWorker(
+          [
+            'rus',
+            'eng',
+          ],
+          OEM.LSTM_ONLY,
+          {
+            langPath,
+
+            workerPath:
+              TESSERACT_WORKER_PATH,
+
+            gzip:
+              true,
+
+            cacheMethod:
+              'none',
+
+            logger: (
+              message
+            ) => {
+              if (
+                message.status ===
+                'recognizing text'
+              ) {
+                console.log(
+                  'INVOICE OCR:',
+                  `${Math.round(
+                    message.progress *
+                      100
+                  )}%`
+                );
+              }
+            },
+          }
+        );
+
+
+      try {
+        await worker
+          .setParameters({
+            tessedit_pageseg_mode:
+              PSM.AUTO,
+
+            preserve_interword_spaces:
+              '1',
+
+            user_defined_dpi:
+              OCR_DPI,
+          });
+
+
+        const result =
+          await worker
+            .recognize(
+              image,
+              {
+                rotateAuto:
+                  false,
+              },
+              {
+                text:
+                  true,
+
+                tsv:
+                  true,
+              }
+            );
+
+
+        const tsv =
+          result.data.tsv ??
+          '';
+
+
+        return {
+          text:
+            result.data.text
+              .trim(),
+
+          layoutLines:
+            parseTsvLines(
+              tsv,
+              pageOffset
+            ),
+        };
+      } finally {
+        await worker
+          .terminate();
+      }
+    }
+  );
+}
+
+
+function inspectDocument(
+  document:
+    ExtractedDocument
+) {
+  const parsed =
+    parseInvoiceText(
+      document.text,
+      document.layoutLines
     );
 
 
+  const detectedKind =
+    detectInvoiceKind(
+      parsed,
+      document.text,
+      document.layoutLines
+    );
+
+
+  return {
+    parsed,
+    detectedKind,
+  };
+}
+
+
+async function extractPdfDirectText(
+  buffer:
+    Buffer
+) {
   const parser =
     new PDFParse({
       data:
@@ -1684,55 +1790,58 @@ async function extractPdfText(
 
 
   try {
+    /*
+     * Для определения поставщика/покупателя нет необходимости
+     * читать весь многостраничный PDF.
+     */
     const textResult =
       await parser
-        .getText();
+        .getText({
+          first:
+            OCR_PDF_PAGES,
+        });
 
 
-    const directText =
-      normalizeDocumentText(
-        textResult.text ??
+    return normalizeDocumentText(
+      textResult.text ??
         ''
-      );
+    );
+  } finally {
+    await parser
+      .destroy();
+  }
+}
 
 
-    const directParsed =
-      parseInvoiceText(
-        directText,
-        []
-      );
+async function renderPdfPage(
+  buffer:
+    Buffer,
+
+  pageNumber:
+    number
+) {
+  const parser =
+    new PDFParse({
+      data:
+        buffer,
+
+      CanvasFactory,
+    });
 
 
-    const directKind =
-      detectInvoiceKind(
-        directParsed,
-        directText,
-        []
-      );
-
-
-    if (
-      directKind !==
-      'UNKNOWN'
-    ) {
-      return {
-        text:
-          directText,
-
-        recognitionMethod:
-          'PDF_TEXT',
-
-        layoutLines:
-          [],
-      };
-    }
-
-
+  try {
+    /*
+     * Важный момент для памяти:
+     *
+     * рендерим только ОДНУ страницу.
+     * Не создаём массив изображений двух страниц по 2200 px.
+     */
     const screenshotResult =
       await parser
         .getScreenshot({
-          first:
-            OCR_PDF_PAGES,
+          partial: [
+            pageNumber,
+          ],
 
           desiredWidth:
             OCR_IMAGE_WIDTH,
@@ -1745,41 +1854,37 @@ async function extractPdfText(
         });
 
 
-    const images =
-      screenshotResult.pages
-        .map(
-          (
-            page
-          ) =>
-            Buffer.from(
-              page.data
-            )
-        )
-        .filter(
-          (
-            image
-          ) =>
-            image.length >
-            0
-        );
+    const page =
+      screenshotResult
+        .pages[0];
 
 
-    const ocr =
-      await recognizeImages(
-        images
-      );
+    if (
+      !page ||
+      !page.data
+    ) {
+      return null;
+    }
 
 
-    return {
-      text:
-        ocr.text,
+    /*
+     * Получаем PNG до destroy().
+     *
+     * После выхода из этой функции PDF.js и canvas будут
+     * полностью уничтожены ДО запуска Tesseract.
+     */
+    if (
+      Buffer.isBuffer(
+        page.data
+      )
+    ) {
+      return page.data;
+    }
 
-      recognitionMethod:
-        'OCR',
 
-      layoutLines:
-        ocr.layoutLines,
-    };
+    return Buffer.from(
+      page.data
+    );
   } finally {
     await parser
       .destroy();
@@ -1787,20 +1892,199 @@ async function extractPdfText(
 }
 
 
-async function extractImageText(
-  file:
-    File
+async function extractPdfText(
+  buffer:
+    Buffer
 ): Promise<ExtractedDocument> {
-  const image =
-    Buffer.from(
-      await file.arrayBuffer()
+  /*
+   * 1. Сначала дешёвый текстовый слой.
+   *
+   * PDF.js после этой функции уже уничтожен.
+   */
+  const directText =
+    await extractPdfDirectText(
+      buffer
     );
 
 
+  if (
+    directText
+  ) {
+    const directDocument:
+      ExtractedDocument =
+      {
+        text:
+          directText,
+
+        recognitionMethod:
+          'PDF_TEXT',
+
+        layoutLines:
+          [],
+      };
+
+
+    const directInspection =
+      inspectDocument(
+        directDocument
+      );
+
+
+    if (
+      directInspection
+        .detectedKind !==
+      'UNKNOWN'
+    ) {
+      console.log(
+        'INVOICE PDF: text layer is sufficient, OCR skipped'
+      );
+
+
+      return directDocument;
+    }
+  }
+
+
+  /*
+   * 2. Если текстового слоя недостаточно — OCR.
+   *
+   * Каждая страница проходит:
+   *
+   * PDF -> PNG -> destroy PDF.js -> OCR -> terminate Tesseract.
+   *
+   * PDF.js и Tesseract не должны одновременно удерживать
+   * тяжёлые структуры в памяти.
+   */
+  let combinedText =
+    '';
+
+  const combinedLayoutLines:
+    OcrLayoutLine[] =
+    [];
+
+
+  for (
+    let pageNumber =
+      1;
+    pageNumber <=
+      OCR_PDF_PAGES;
+    pageNumber +=
+      1
+  ) {
+    console.log(
+      'INVOICE OCR PDF PAGE:',
+      pageNumber
+    );
+
+
+    const image =
+      await renderPdfPage(
+        buffer,
+        pageNumber
+      );
+
+
+    if (
+      !image
+    ) {
+      break;
+    }
+
+
+    const ocr =
+      await recognizeSingleImage(
+        image,
+        (
+          pageNumber -
+          1
+        ) *
+          1000
+      );
+
+
+    if (
+      ocr.text
+    ) {
+      combinedText =
+        [
+          combinedText,
+          ocr.text,
+        ]
+          .filter(
+            Boolean
+          )
+          .join(
+            '\n\n'
+          );
+    }
+
+
+    combinedLayoutLines.push(
+      ...ocr.layoutLines
+    );
+
+
+    const currentDocument:
+      ExtractedDocument =
+      {
+        text:
+          combinedText,
+
+        recognitionMethod:
+          'OCR',
+
+        layoutLines:
+          combinedLayoutLines,
+      };
+
+
+    const currentInspection =
+      inspectDocument(
+        currentDocument
+      );
+
+
+    /*
+     * Как только роль ГГС определена, вторую страницу
+     * вообще не рендерим.
+     */
+    if (
+      currentInspection
+        .detectedKind !==
+      'UNKNOWN'
+    ) {
+      console.log(
+        'INVOICE OCR: classification resolved on page',
+        pageNumber
+      );
+
+
+      return currentDocument;
+    }
+  }
+
+
+  return {
+    text:
+      combinedText,
+
+    recognitionMethod:
+      'OCR',
+
+    layoutLines:
+      combinedLayoutLines,
+  };
+}
+
+
+async function extractImageText(
+  buffer:
+    Buffer
+): Promise<ExtractedDocument> {
   const ocr =
-    await recognizeImages([
-      image,
-    ]);
+    await recognizeSingleImage(
+      buffer
+    );
 
 
   return {
@@ -1817,50 +2101,55 @@ async function extractImageText(
 
 
 async function extractDocumentText(
-  file:
-    File
+  input: {
+    buffer:
+      Buffer;
+
+    fileName:
+      string;
+
+    fileType:
+      string;
+  }
 ): Promise<ExtractedDocument> {
   const lowerName =
-    file.name
+    input.fileName
       .toLowerCase();
 
 
   if (
-    file.type ===
+    input.fileType ===
       'application/pdf' ||
     lowerName.endsWith(
       '.pdf'
     )
   ) {
     return extractPdfText(
-      file
+      input.buffer
     );
   }
 
 
   return extractImageText(
-    file
+    input.buffer
   );
 }
 
 
-export async function classifyTransportRequestInvoice(
+function buildClassificationResult(
   input: {
-    file:
-      File;
-
     expectedKind:
       TransportRequestInvoiceKind;
+
+    extracted:
+      ExtractedDocument;
+
+    fileName:
+      string;
   }
-): Promise<InvoiceClassificationResult> {
-  const extracted =
-    await extractDocumentText(
-      input.file
-    );
-
-
+): InvoiceClassificationResult {
   if (
-    !extracted.text
+    !input.extracted.text
       .trim()
   ) {
     return {
@@ -1883,7 +2172,7 @@ export async function classifyTransportRequestInvoice(
         '',
 
       recognitionMethod:
-        extracted
+        input.extracted
           .recognitionMethod,
 
       message:
@@ -1894,16 +2183,16 @@ export async function classifyTransportRequestInvoice(
 
   const parsed =
     parseInvoiceText(
-      extracted.text,
-      extracted.layoutLines
+      input.extracted.text,
+      input.extracted.layoutLines
     );
 
 
   const detectedKind =
     detectInvoiceKind(
       parsed,
-      extracted.text,
-      extracted.layoutLines
+      input.extracted.text,
+      input.extracted.layoutLines
     );
 
 
@@ -1912,11 +2201,18 @@ export async function classifyTransportRequestInvoice(
     input.expectedKind;
 
 
+  const ourCompanyRole =
+    detectOurCompanyRole(
+      input.extracted.text,
+      input.extracted.layoutLines
+    );
+
+
   console.log(
     'TRANSPORT REQUEST INVOICE CLASSIFICATION:',
     {
       fileName:
-        input.file.name,
+        input.fileName,
 
       expectedKind:
         input.expectedKind,
@@ -1924,17 +2220,13 @@ export async function classifyTransportRequestInvoice(
       detectedKind,
 
       recognitionMethod:
-        extracted
+        input.extracted
           .recognitionMethod,
 
       ourCompanyInn:
         OUR_COMPANY_INN,
 
-      ourCompanyRole:
-        detectOurCompanyRole(
-          extracted.text,
-          extracted.layoutLines
-        ),
+      ourCompanyRole,
 
       supplierName:
         parsed.supplierName,
@@ -1948,8 +2240,13 @@ export async function classifyTransportRequestInvoice(
       buyerInn:
         parsed.buyerInn,
 
+      /*
+       * Не выводим в лог сотни OCR-строк.
+       * Оставляем максимум 20 диагностических строк.
+       */
       layoutLinesNearOurInn:
-        extracted.layoutLines
+        input.extracted
+          .layoutLines
           .filter(
             (
               line
@@ -1961,6 +2258,10 @@ export async function classifyTransportRequestInvoice(
                 line.text
               ) !==
                 'UNKNOWN'
+          )
+          .slice(
+            0,
+            20
           )
           .map(
             (
@@ -2007,7 +2308,7 @@ export async function classifyTransportRequestInvoice(
       parsed.buyerInn,
 
     recognitionMethod:
-      extracted
+      input.extracted
         .recognitionMethod,
 
     message:
@@ -2018,4 +2319,257 @@ export async function classifyTransportRequestInvoice(
             detectedKind
           ),
   };
+}
+
+
+function cleanupClassificationCache() {
+  const now =
+    Date.now();
+
+
+  for (
+    const [
+      key,
+      entry,
+    ] of classifierState
+      .cache
+      .entries()
+  ) {
+    if (
+      entry.expiresAt <=
+      now
+    ) {
+      classifierState
+        .cache
+        .delete(
+          key
+        );
+    }
+  }
+
+
+  while (
+    classifierState
+      .cache
+      .size >
+    CLASSIFICATION_CACHE_MAX_ENTRIES
+  ) {
+    const firstKey =
+      classifierState
+        .cache
+        .keys()
+        .next()
+        .value as
+        string |
+        undefined;
+
+
+    if (
+      !firstKey
+    ) {
+      break;
+    }
+
+
+    classifierState
+      .cache
+      .delete(
+        firstKey
+      );
+  }
+}
+
+
+async function classifyBuffer(
+  input: {
+    buffer:
+      Buffer;
+
+    fileName:
+      string;
+
+    fileType:
+      string;
+
+    expectedKind:
+      TransportRequestInvoiceKind;
+  }
+): Promise<InvoiceClassificationResult> {
+  const extracted =
+    await extractDocumentText({
+      buffer:
+        input.buffer,
+
+      fileName:
+        input.fileName,
+
+      fileType:
+        input.fileType,
+    });
+
+
+  return buildClassificationResult({
+    expectedKind:
+      input.expectedKind,
+
+    extracted,
+
+    fileName:
+      input.fileName,
+  });
+}
+
+
+export async function classifyTransportRequestInvoice(
+  input: {
+    file:
+      File;
+
+    expectedKind:
+      TransportRequestInvoiceKind;
+  }
+): Promise<InvoiceClassificationResult> {
+  /*
+   * Читаем файл только один раз.
+   */
+  const buffer =
+    Buffer.from(
+      await input.file
+        .arrayBuffer()
+    );
+
+
+  /*
+   * validate и последующий /invoice получают один и тот же
+   * файл повторно.
+   *
+   * Поэтому используем SHA-256 и не запускаем OCR второй раз
+   * в течение короткого промежутка.
+   */
+  const fileHash =
+    createHash(
+      'sha256'
+    )
+      .update(
+        buffer
+      )
+      .digest(
+        'hex'
+      );
+
+
+  const cacheKey =
+    [
+      CLASSIFIER_VERSION,
+      input.expectedKind,
+      fileHash,
+    ].join(
+      ':'
+    );
+
+
+  cleanupClassificationCache();
+
+
+  const cached =
+    classifierState
+      .cache
+      .get(
+        cacheKey
+      );
+
+
+  if (
+    cached &&
+    cached.expiresAt >
+      Date.now()
+  ) {
+    console.log(
+      'INVOICE CLASSIFICATION CACHE HIT:',
+      input.file.name
+    );
+
+
+    return cached.result;
+  }
+
+
+  /*
+   * Если браузер случайно отправил два одинаковых запроса
+   * одновременно, второй не создаёт второй Tesseract worker.
+   */
+  const existingInFlight =
+    classifierState
+      .inFlight
+      .get(
+        cacheKey
+      );
+
+
+  if (
+    existingInFlight
+  ) {
+    console.log(
+      'INVOICE CLASSIFICATION JOIN IN-FLIGHT:',
+      input.file.name
+    );
+
+
+    return existingInFlight;
+  }
+
+
+  const classificationPromise =
+    classifyBuffer({
+      buffer,
+
+      fileName:
+        input.file.name,
+
+      fileType:
+        input.file.type,
+
+      expectedKind:
+        input.expectedKind,
+    });
+
+
+  classifierState
+    .inFlight
+    .set(
+      cacheKey,
+      classificationPromise
+    );
+
+
+  try {
+    const result =
+      await classificationPromise;
+
+
+    classifierState
+      .cache
+      .set(
+        cacheKey,
+        {
+          expiresAt:
+            Date.now() +
+            CLASSIFICATION_CACHE_TTL_MS,
+
+          result,
+        }
+      );
+
+
+    cleanupClassificationCache();
+
+
+    return result;
+  } finally {
+    classifierState
+      .inFlight
+      .delete(
+        cacheKey
+      );
+  }
 }
