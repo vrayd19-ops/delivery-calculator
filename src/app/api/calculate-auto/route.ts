@@ -40,9 +40,12 @@ async function createCalculationNumber() {
 }
 
 
+
 export async function POST(
   req: Request
 ) {
+  const startedAt = performance.now();
+  const elapsed = () => Math.round(performance.now() - startedAt);
   try {
     /*
      * Каждый расчет теперь
@@ -194,6 +197,7 @@ export async function POST(
     /*
      * Фильтруем подходящий транспорт.
      */
+    console.info("AUTO TIMING vehicles-loaded", { elapsedMs: elapsed(), count: vehicles.length });
     const suitableVehicles =
       vehicles.filter(
         (
@@ -257,15 +261,23 @@ export async function POST(
     const calculations: any[] =
       [];
 
+    // Общий кэш только для этого автоматического расчёта.
+    // Сравнение тарифов по-прежнему выполняется для каждой машины.
+    const routeCache: import('@/lib/calculation').CalculationRouteCache = new Map();
+
+    console.info("AUTO TIMING start-vehicle-calculations", { elapsedMs: elapsed(), count: suitableVehicles.length });
     for (
       const vehicle of
       suitableVehicles
     ) {
+      const vehicleStartedAt = performance.now();
       try {
         const result =
           await computeCalculation({
             vehicleTypeId:
               vehicle.id,
+
+            routeCache,
 
             points:
               body.points,
@@ -286,6 +298,7 @@ export async function POST(
               [],
           });
 
+        console.info("AUTO TIMING vehicle-computed", { vehicleId: vehicle.id, durationMs: Math.round(performance.now() - vehicleStartedAt), elapsedMs: elapsed() });
         if (
           result.overweight ||
           result.cargoTooLong
@@ -299,6 +312,7 @@ export async function POST(
       } catch (
         error
       ) {
+        console.error("AUTO TIMING vehicle-failed", { vehicleId: vehicle.id, durationMs: Math.round(performance.now() - vehicleStartedAt), elapsedMs: elapsed() });
         console.error(
           'AUTO VEHICLE ERROR:',
           vehicle.name,
@@ -327,6 +341,8 @@ export async function POST(
     /*
      * Выбираем самый дешевый вариант.
      */
+    console.info("AUTO TIMING all-vehicles-computed", { elapsedMs: elapsed(), successfulCount: calculations.length });
+    console.info("AUTO ROUTE CACHE SUMMARY", { uniqueRoutes: routeCache.size, vehicles: suitableVehicles.length });
     calculations.sort(
       (
         first,
@@ -379,6 +395,7 @@ export async function POST(
       await createCalculationNumber();
 
 
+    console.info("AUTO TIMING before-save", { elapsedMs: elapsed() });
     const savedCalculation =
       await prisma.calculation.create({
         data: {
@@ -617,6 +634,7 @@ export async function POST(
       });
 
 
+    console.info("AUTO TIMING completed", { elapsedMs: elapsed() });
     console.log(
       'AUTO CALCULATION SAVED:',
       {
@@ -776,6 +794,7 @@ export async function POST(
       );
     }
 
+    console.error("AUTO TIMING request-failed", { elapsedMs: elapsed() });
     console.error(
       'AUTO CALCULATE ERROR:',
       error?.message ||

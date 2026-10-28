@@ -32,6 +32,13 @@ import type {
 } from './types';
 
 
+// Кэш действует только в рамках одного HTTP-запроса.
+// Маршруты для разных габаритов транспорта НЕ объединяются.
+export type CalculationRouteCache = Map<
+  string,
+  ReturnType<typeof buildDrivingRoute>
+>;
+
 export async function computeCalculation(
   input: {
     vehicleTypeId: string;
@@ -50,6 +57,9 @@ export async function computeCalculation(
     }[];
 
     comment?: string;
+
+    // Необязателен: обычные вызовы computeCalculation работают как раньше.
+    routeCache?: CalculationRouteCache;
   }
 ) {
   /*
@@ -169,6 +179,34 @@ export async function computeCalculation(
   };
 
 
+  // Ключ учитывает все точки, массу и габариты, которые получает OSRM.
+  // Таким образом, маршрут грузовика с другой шириной/длиной
+  // не будет ошибочно заменён маршрутом другой машины.
+  const getDrivingRoute = (
+    routePoints: Coordinate[]
+  ): ReturnType<typeof buildDrivingRoute> => {
+    const cache = input.routeCache;
+    if (!cache) {
+      return buildDrivingRoute(routePoints, truckOptions);
+    }
+
+    const key = JSON.stringify([routePoints, truckOptions]);
+    const existing = cache.get(key);
+    if (existing) {
+      console.info('AUTO ROUTE CACHE HIT', { cacheSize: cache.size });
+      return existing;
+    }
+
+    console.info('AUTO ROUTE CACHE MISS', { cacheSize: cache.size });
+    const pending = buildDrivingRoute(routePoints, truckOptions);
+    cache.set(key, pending);
+    // Не сохраняем неудачный ответ, чтобы другой вариант мог повторить запрос.
+    void pending.catch(() => {
+      if (cache.get(key) === pending) cache.delete(key);
+    });
+    return pending;
+  };
+
   /*
    * =====================================
    * ОСНОВНОЙ МАРШРУТ
@@ -179,9 +217,8 @@ export async function computeCalculation(
    * → выгрузка.
    */
   const route =
-    await buildDrivingRoute(
-      coordinates,
-      truckOptions
+    await getDrivingRoute(
+      coordinates
     );
 
 
@@ -434,9 +471,8 @@ export async function computeCalculation(
 
 
     pricingRoute =
-      await buildDrivingRoute(
-        pricingCoordinates,
-        truckOptions
+      await getDrivingRoute(
+        pricingCoordinates
       );
   }
 
