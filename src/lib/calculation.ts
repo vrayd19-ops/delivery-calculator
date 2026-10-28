@@ -61,6 +61,10 @@ export async function computeCalculation(
 
     // Необязателен: обычные вызовы computeCalculation работают как раньше.
     routeCache?: CalculationRouteCache;
+
+    // Общие результаты геометрии для автомобилей одного запроса.
+    geoCache?: Map<string, ReturnType<typeof splitRouteByMkad>>;
+    mkadStartCache?: Map<string, Coordinate>;
   }
 ) {
   /*
@@ -227,11 +231,15 @@ export async function computeCalculation(
    * Разделяем основной маршрут
    * относительно МКАД.
    */
-  const geo =
-    splitRouteByMkad(
+  const geoKey = JSON.stringify(coordinates);
+  let geo = input.geoCache?.get(geoKey);
+  if (!geo) {
+    geo = splitRouteByMkad(
       route.coordinates,
       settings?.mkadGeoJson
     );
+    input.geoCache?.set(geoKey, geo);
+  }
 
 
   /*
@@ -372,68 +380,22 @@ export async function computeCalculation(
      * Получаем настоящий
      * полигон МКАД.
      */
-    const mkadPolygon =
-      getMkadPolygon(
-        settings?.mkadGeoJson
-      );
+    const mkadKey = JSON.stringify(coordinates[0]);
+    let mkadStart = input.mkadStartCache?.get(mkadKey);
 
-
-    /*
-     * Превращаем полигон
-     * в линию границы.
-     */
-    const mkadBoundary =
-      polygonToLine(
-        mkadPolygon as any
-      );
-
-
-    /*
-     * Основная точка погрузки.
-     */
-    const pickupCoordinate =
-      coordinates[0];
-
-
-    /*
-     * Находим геометрически
-     * ближайшую точку МКАД
-     * к месту погрузки.
-     */
-    const nearestMkadPoint =
-      nearestPointOnLine(
+    if (!mkadStart) {
+      const mkadPolygon = getMkadPolygon(settings?.mkadGeoJson);
+      const mkadBoundary = polygonToLine(mkadPolygon as any);
+      const nearestMkadPoint = nearestPointOnLine(
         mkadBoundary as any,
-
-        point(
-          pickupCoordinate
-        ),
-
-        {
-          units:
-            'kilometers',
-        }
+        point(coordinates[0]),
+        { units: 'kilometers' }
       );
-
-
-    const [
-      mkadLongitude,
-      mkadLatitude,
-    ] =
-      nearestMkadPoint
-        .geometry
-        .coordinates;
-
-
-    const mkadStart:
-      Coordinate = [
-        Number(
-          mkadLongitude
-        ),
-
-        Number(
-          mkadLatitude
-        ),
-      ];
+      const [mkadLongitude, mkadLatitude] =
+        nearestMkadPoint.geometry.coordinates;
+      mkadStart = [Number(mkadLongitude), Number(mkadLatitude)];
+      input.mkadStartCache?.set(mkadKey, mkadStart);
+    }
 
 
     console.log(
