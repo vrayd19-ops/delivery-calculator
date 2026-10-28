@@ -33,7 +33,8 @@ import type {
 
 
 // Кэш действует только в рамках одного HTTP-запроса.
-// Маршруты для разных габаритов транспорта НЕ объединяются.
+// OSRM в текущей реализации игнорирует параметры транспорта.
+// Ключ маршрута зависит только от последовательности координат.
 export type CalculationRouteCache = Map<
   string,
   ReturnType<typeof buildDrivingRoute>
@@ -179,9 +180,9 @@ export async function computeCalculation(
   };
 
 
-  // Ключ учитывает все точки, массу и габариты, которые получает OSRM.
-  // Таким образом, маршрут грузовика с другой шириной/длиной
-  // не будет ошибочно заменён маршрутом другой машины.
+  // Текущий buildDrivingRoute не использует truckOptions при запросе OSRM.
+  // Поэтому один и тот же набор координат даёт один и тот же маршрут
+  // независимо от выбранного автомобиля.
   const getDrivingRoute = (
     routePoints: Coordinate[]
   ): ReturnType<typeof buildDrivingRoute> => {
@@ -190,7 +191,7 @@ export async function computeCalculation(
       return buildDrivingRoute(routePoints, truckOptions);
     }
 
-    const key = JSON.stringify([routePoints, truckOptions]);
+    const key = JSON.stringify(routePoints);
     const existing = cache.get(key);
     if (existing) {
       console.info('AUTO ROUTE CACHE HIT', { cacheSize: cache.size });
