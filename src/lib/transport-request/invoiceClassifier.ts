@@ -61,6 +61,15 @@ type ParsedInvoiceData = {
 
   buyerInn:
     string;
+
+  invoiceNumber:
+    string;
+
+  invoiceDate:
+    string;
+
+  invoiceAmount:
+    string;
 };
 
 
@@ -99,6 +108,15 @@ export type InvoiceClassificationResult = {
 
   message:
     string;
+
+  invoiceNumber?:
+    string;
+
+  invoiceDate?:
+    string;
+
+  invoiceAmount?:
+    string;
 };
 
 
@@ -129,8 +147,70 @@ type ClassifierGlobalState = {
 };
 
 
-const OUR_COMPANY_INN =
-  '9204569514';
+const OUR_COMPANY_INN = '9204569514';
+
+const SECOND_OUR_COMPANY_INN = '9718232572';
+
+
+function containsOurCompanyInn(
+  value:
+    string
+): boolean {
+  const normalized =
+    normalizeInn(
+      value
+    );
+
+  return (
+    normalized.includes(
+      OUR_COMPANY_INN
+    ) ||
+    normalized.includes(
+      SECOND_OUR_COMPANY_INN
+    )
+  );
+}
+
+
+function getOurCompanyInn(
+  value:
+    string
+): string {
+  const normalized =
+    normalizeInn(
+      value
+    );
+
+  if (
+    normalized.includes(
+      SECOND_OUR_COMPANY_INN
+    )
+  ) {
+    return SECOND_OUR_COMPANY_INN;
+  }
+
+  if (
+    normalized.includes(
+      OUR_COMPANY_INN
+    )
+  ) {
+    return OUR_COMPANY_INN;
+  }
+
+  return '';
+}
+
+
+function isOurCompanyInn(
+  value:
+    string
+): boolean {
+  return (
+    isOurCompanyInn(value) ||
+    value ===
+      SECOND_OUR_COMPANY_INN
+  );
+}
 
 
 /*
@@ -933,6 +1013,256 @@ function detectOurCompanyRole(
 }
 
 
+
+function extractInvoiceNumber(
+  text:
+    string
+): string {
+  const patterns = [
+    /сч[её]т(?:\s+на\s+оплату)?\s*(?:№|N|#)?\s*([A-Za-zА-Яа-я0-9./_-]{1,40})/iu,
+    /(?:№|N|#)\s*([A-Za-zА-Яа-я0-9./_-]{1,40})\s+от/iu,
+  ];
+
+
+  for (
+    const pattern of patterns
+  ) {
+    const match =
+      text.match(
+        pattern
+      );
+
+
+    if (
+      match?.[1]
+    ) {
+      return match[1]
+        .trim();
+    }
+  }
+
+
+  return '';
+}
+
+
+function russianMonthNumber(
+  month:
+    string
+): string | null {
+  const normalized =
+    month
+      .toLowerCase()
+      .replace(
+        /ё/g,
+        'е'
+      );
+
+
+  const months:
+    Record<
+      string,
+      string
+    > = {
+      января: '01',
+      февраля: '02',
+      марта: '03',
+      апреля: '04',
+      мая: '05',
+      июня: '06',
+      июля: '07',
+      августа: '08',
+      сентября: '09',
+      октября: '10',
+      ноября: '11',
+      декабря: '12',
+    };
+
+
+  return (
+    months[normalized] ??
+    null
+  );
+}
+
+
+function extractInvoiceDate(
+  text:
+    string
+): string {
+  const numericPatterns = [
+    /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,100}?\sот\s*(\d{1,2})[.\-/](\d{1,2})[.\-/](20\d{2})/iu,
+    /(?:№|N|#)[A-Za-zА-Яа-я0-9./_-]{1,40}\s+от\s+(\d{1,2})[.\-/](\d{1,2})[.\-/](20\d{2})/iu,
+  ];
+
+
+  for (
+    const pattern of numericPatterns
+  ) {
+    const match =
+      text.match(
+        pattern
+      );
+
+
+    if (
+      match
+    ) {
+      const day =
+        match[1]
+          .padStart(
+            2,
+            '0'
+          );
+
+      const month =
+        match[2]
+          .padStart(
+            2,
+            '0'
+          );
+
+
+      return `${match[3]}-${month}-${day}`;
+    }
+  }
+
+
+  const wordMatch =
+    text.match(
+      /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,100}?\sот\s*(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s+(20\d{2})/iu
+    );
+
+
+  if (
+    wordMatch
+  ) {
+    const month =
+      russianMonthNumber(
+        wordMatch[2]
+      );
+
+
+    if (
+      month
+    ) {
+      const day =
+        wordMatch[1]
+          .padStart(
+            2,
+            '0'
+          );
+
+
+      return `${wordMatch[3]}-${month}-${day}`;
+    }
+  }
+
+
+  return '';
+}
+
+
+function normalizeMoneyValue(
+  value:
+    string
+): string {
+  const normalized =
+    value
+      .replace(
+        /\s/g,
+        ''
+      )
+      .replace(
+        ',',
+        '.'
+      )
+      .replace(
+        /[^\d.]/g,
+        ''
+      );
+
+
+  const number =
+    Number(
+      normalized
+    );
+
+
+  if (
+    !Number.isFinite(
+      number
+    ) ||
+    number < 0
+  ) {
+    return '';
+  }
+
+
+  return number.toFixed(
+    2
+  );
+}
+
+
+function extractInvoiceAmount(
+  text:
+    string
+): string {
+  const patterns = [
+    /итого\s+к\s+оплате\s*:?\s*([\d\s]+(?:[,.]\d{1,2})?)/giu,
+    /всего\s+к\s+оплате\s*:?\s*([\d\s]+(?:[,.]\d{1,2})?)/giu,
+    /сумма\s+к\s+оплате\s*:?\s*([\d\s]+(?:[,.]\d{1,2})?)/giu,
+    /всего\s+наименований[\s\S]{0,160}?на\s+сумму\s*:?\s*([\d\s]+(?:[,.]\d{1,2})?)/giu,
+    /всего\s+с\s+ндс\s*:?\s*([\d\s]+(?:[,.]\d{1,2})?)/giu,
+    /итого\s*:?\s*([\d\s]+(?:[,.]\d{1,2})?)/giu,
+  ];
+
+  for (
+    const pattern of patterns
+  ) {
+    const amounts =
+      Array.from(
+        text.matchAll(
+          pattern
+        )
+      )
+        .map(
+          (
+            match
+          ) =>
+            normalizeMoneyValue(
+              match[1] ?? ''
+            )
+        )
+        .filter(
+          (
+            amount
+          ) =>
+            amount !== '' &&
+            Number(amount) > 0
+        );
+
+    if (
+      amounts.length > 0
+    ) {
+      return amounts.reduce(
+        (
+          largest,
+          current
+        ) =>
+          Number(current) >
+          Number(largest)
+            ? current
+            : largest
+      );
+    }
+  }
+
+  return '';
+}
+
+
 function parseInvoiceText(
   rawText:
     string
@@ -980,8 +1310,7 @@ function parseInvoiceText(
       (
         inn
       ) =>
-        inn !==
-        OUR_COMPANY_INN
+        !isOurCompanyInn(inn)
     ) ??
     '';
 
@@ -997,6 +1326,9 @@ function parseInvoiceText(
       'BUYER'
   ) {
     buyerInn =
+      getOurCompanyInn(
+        text
+      ) ||
       OUR_COMPANY_INN;
 
 
@@ -1014,6 +1346,9 @@ function parseInvoiceText(
       'SUPPLIER'
   ) {
     supplierInn =
+      getOurCompanyInn(
+        text
+      ) ||
       OUR_COMPANY_INN;
 
 
@@ -1045,6 +1380,21 @@ function parseInvoiceText(
       ),
 
     buyerInn,
+
+    invoiceNumber:
+      extractInvoiceNumber(
+        text
+      ),
+
+    invoiceDate:
+      extractInvoiceDate(
+        text
+      ),
+
+    invoiceAmount:
+      extractInvoiceAmount(
+        text
+      ),
   };
 }
 
@@ -1753,6 +2103,15 @@ function buildClassificationResult(
       buyerInn:
         '',
 
+      invoiceNumber:
+        '',
+
+      invoiceDate:
+        '',
+
+      invoiceAmount:
+        '',
+
       recognitionMethod:
         input.extracted
           .recognitionMethod,
@@ -1762,6 +2121,19 @@ function buildClassificationResult(
     };
   }
 
+
+  const amountDebugLines =
+    input.extracted.text
+      .split(/\r?\n/)
+      .filter(
+        (line) =>
+          /(итог|всего|сумм|оплат|ндс|руб)/iu.test(line)
+      );
+
+  console.log(
+    'INVOICE AMOUNT OCR LINES:',
+    amountDebugLines
+  );
 
   const parsed =
     parseInvoiceText(
@@ -1819,6 +2191,15 @@ function buildClassificationResult(
       buyerInn:
         parsed.buyerInn,
 
+      invoiceNumber:
+        parsed.invoiceNumber,
+
+      invoiceDate:
+        parsed.invoiceDate,
+
+      invoiceAmount:
+        parsed.invoiceAmount,
+
       textLength:
         input.extracted
           .text.length,
@@ -1842,6 +2223,15 @@ function buildClassificationResult(
 
     buyerInn:
       parsed.buyerInn,
+
+      invoiceNumber:
+        parsed.invoiceNumber,
+
+      invoiceDate:
+        parsed.invoiceDate,
+
+      invoiceAmount:
+        parsed.invoiceAmount,
 
     recognitionMethod:
       input.extracted
