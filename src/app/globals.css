@@ -3556,3 +3556,68 @@ body:has(input[type="password"]):not(:has(.app-sidebar)) h2 {
 }
 
 /* === /BRT LOGIN NAV BACKGROUND FIX 2026 === */
+
+
+/* === BRT LOGIN FIRST PHOTO 2026 === */
+
+/* Страница входа — первое согласованное фото */
+body:has(input[type="password"]):not(:has(.app-sidebar)) {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    #071827
+    url('/brt-login-background.png')
+    center center / cover
+    no-repeat fixed !important;
+}
+
+body:has(input[type="password"]):not(:has(.app-sidebar))::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(4, 18, 31, 0.26) 0%,
+      rgba(4, 18, 31, 0.12) 40%,
+      rgba(4, 18, 31, 0.18) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(3, 15, 27, 0.12) 0%,
+      rgba(3, 15, 27, 0.26) 100%
+    );
+}
+
+body:has(input[type="password"]):not(:has(.app-sidebar))::after {
+  content: none !important;
+}
+
+body:has(input[type="password"]):not(:has(.app-sidebar)) .auth-layout {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: transparent !important;
+}
+
+body:has(input[type="password"]):not(:has(.app-sidebar)) .auth-layout > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Карточка входа — светлая, но слегка прозрачная */
+body:has(input[type="password"]):not(:has(.app-sidebar)) form {
+  background: rgba(255, 255, 255, 0.93) !important;
+  border: 1px solid rgba(255, 255, 255, 0.56) !important;
+  box-shadow:
+    0 28px 70px rgba(0, 20, 38, 0.30) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* === /BRT LOGIN FIRST PHOTO 2026 === */
