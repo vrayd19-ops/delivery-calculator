@@ -24,6 +24,10 @@ import {
   sendTransportRequestInvoiceDocumentToTelegram,
 } from '@/lib/telegram/transportRequestInvoiceTelegram';
 
+import {
+  saveTransportRequestInvoiceFile,
+} from '@/lib/transport-request/invoiceStorage';
+
 
 export const runtime =
   'nodejs';
@@ -620,11 +624,10 @@ export async function POST(
 
   /*
    * =========================================
-   * 8. ПРОВЕРЯЕМ ДУБЛИКАТ И НЕУДАЧНУЮ
-   *    ПРЕДЫДУЩУЮ ПОПЫТКУ
+   * 8. ПРОВЕРЯЕМ ДУБЛИКАТ
    * =========================================
    */
-  const existingInvoice =
+  const duplicate =
     await prisma
       .transportRequestInvoice
       .findFirst({
@@ -637,26 +640,20 @@ export async function POST(
 
           fileSize:
             file.size,
-        },
 
-        orderBy: {
-          createdAt:
-            'desc',
+          telegramSent:
+            true,
         },
 
         select: {
           id:
-            true,
-
-          telegramSent:
             true,
         },
       });
 
 
   if (
-    existingInvoice
-      ?.telegramSent
+    duplicate
   ) {
     return errorResponse(
       'Этот файл уже прикреплён к заявке.',
@@ -763,8 +760,7 @@ export async function POST(
 
   /*
    * =========================================
-   * 10. СОЗДАЁМ ИЛИ ПЕРЕИСПОЛЬЗУЕМ ЗАПИСЬ
-   *     О СЧЁТЕ
+   * 10. СОЗДАЁМ ЗАПИСЬ О СЧЁТЕ
    * =========================================
    */
   let savedInvoice:
@@ -775,78 +771,64 @@ export async function POST(
 
 
   try {
-    if (
-      existingInvoice
-    ) {
-      savedInvoice =
-        await prisma
-          .transportRequestInvoice
-          .update({
-            where: {
-              id:
-                existingInvoice.id,
-            },
+    savedInvoice =
+      await prisma
+        .transportRequestInvoice
+        .create({
+          data: {
+            transportRequestId:
+              transportRequest.id,
 
-            data: {
-              fileType,
+            kind,
 
-              telegramSent:
-                false,
+            sortOrder:
+              currentCount,
 
-              telegramMessageId:
-                null,
+            fileName,
 
-              telegramError:
-                null,
-            },
+            fileType,
 
-            select: {
-              id:
-                true,
-            },
-          });
-    } else {
-      savedInvoice =
-        await prisma
-          .transportRequestInvoice
-          .create({
-            data: {
-              transportRequestId:
-                transportRequest.id,
+            fileSize:
+              file.size,
 
-              kind,
+            invoiceNumber:
+              classification.invoiceNumber || null,
 
-              sortOrder:
-                currentCount,
+            invoiceDate:
+              classification.invoiceDate
+                ? new Date(
+                    classification.invoiceDate + 'T00:00:00.000Z'
+                  )
+                : null,
 
-              fileName,
+            invoiceAmount:
+              classification.invoiceAmount || null,
 
-              fileType,
+            telegramSent:
+              false,
 
-              fileSize:
-                file.size,
+            telegramMessageId:
+              null,
 
-              telegramSent:
-                false,
+            telegramError:
+              null,
+          },
 
-              telegramMessageId:
-                null,
+          select: {
+            id:
+              true,
+          },
+        });
 
-              telegramError:
-                null,
-            },
-
-            select: {
-              id:
-                true,
-            },
-          });
-    }
+    await saveTransportRequestInvoiceFile(
+      savedInvoice.id,
+      file
+    );
   } catch (
     error
   ) {
     console.error(
-      'TRANSPORT REQUEST INVOICE DATABASE SAVE ERROR:',
+      'TRANSPORT REQUEST INVOICE DATABASE CREATE ERROR:',
       error
     );
 

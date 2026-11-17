@@ -6,6 +6,7 @@ import {
 
 import AddressInput from './AddressInput';
 import YandexMap from './YandexMap';
+import ManagerLaunchAnnouncement from './ManagerLaunchAnnouncement';
 
 import type {
   AddressPoint,
@@ -65,6 +66,9 @@ function cargoTypeLabel(
     case 'швеллер':
       return 'Швеллер';
 
+    case 'сетка':
+      return 'Сетка сварная';
+
     default:
       return 'Другое';
   }
@@ -105,6 +109,10 @@ export default function Calculator() {
     ''
   );
 
+
+  // Для совместимости с API сохраняем поля, но выбор делаем одним списком.
+  const [metalProduct, setMetalProduct] = useState('');
+  const metalCategory = cargoType;
 
   const [
     needsConics,
@@ -311,7 +319,7 @@ export default function Calculator() {
 
 
     if (
-      !cargoType
+      !cargoType || !metalProduct
     ) {
       setError(
         'Выберите, что именно везём.'
@@ -419,6 +427,8 @@ export default function Calculator() {
                 points,
 
                 cargoType,
+                metalCategory,
+                metalProduct,
 
                 cargoWeightTons:
                   parsedWeight,
@@ -516,6 +526,7 @@ export default function Calculator() {
 
   return (
     <div className="calculator-dashboard">
+      <ManagerLaunchAnnouncement />
 
       {/*
        * ==========================================
@@ -675,71 +686,23 @@ export default function Calculator() {
             </label>
 
             <select
-              value={
-                cargoType
-              }
-              onChange={(
-                event
-              ) => {
-                setCargoType(
-                  event
-                    .target
-                    .value
-                );
-
+              value={cargoType}
+              onChange={(event) => {
+                const type = event.target.value;
+                setCargoType(type);
+                setMetalProduct(type);
                 clearResult();
               }}
             >
-
-              <option value="">
-                Выберите тип груза
-              </option>
-
-
-              <option value="арматура">
-                Арматура
-              </option>
-
-
-              <option value="труба">
-                Труба
-              </option>
-
-
-              <option value="балка">
-                Балка
-              </option>
-
-
-              <option value="лист">
-                Лист
-              </option>
-
-
-              <option value="профнастил">
-                Профнастил
-              </option>
-
-
-              <option value="сэндвич панель">
-                Сэндвич-панель
-              </option>
-
-
-              <option value="уголки">
-                Уголки
-              </option>
-
-
-              <option value="швеллер">
-                Швеллер
-              </option>
-
-
-              <option value="другое">
-                Другое
-              </option>
-
+              <option value="">Выберите груз</option>
+              <option value="арматура">Арматура</option>
+              <option value="труба">Трубы</option>
+              <option value="лист">Лист</option>
+              <option value="уголки">Уголки</option>
+              <option value="швеллер">Швеллеры</option>
+              <option value="балка">Двутавры</option>
+              <option value="сетка">Сетка сварная</option>
+              <option value="сэндвич панель">Сэндвич-панели</option>
             </select>
 
           </div>

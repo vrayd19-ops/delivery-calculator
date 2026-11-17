@@ -767,3 +767,4 @@
     max-width: none;
   }
 }
+.additionalPointsSection{display:grid;gap:12px;margin-top:18px}.addPointButton{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:fit-content;min-height:42px;padding:0 16px;border:1px dashed #7d675c;border-radius:10px;background:#fffaf7;color:#5d493f;font:inherit;font-weight:700;cursor:pointer}.addPointButton:hover{background:#f8eee8}.additionalPointCard{display:grid;gap:10px;padding:14px;border:1px solid #ded2cc;border-radius:12px;background:#fff}.additionalPointHeader{display:flex;align-items:center;justify-content:space-between;gap:12px}.removePointButton{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #e6cbc7;border-radius:9px;background:#fff6f5;color:#a5453b;cursor:pointer}.additionalPointGrid{display:grid;grid-template-columns:1fr 1fr 140px;gap:10px}@media(max-width:760px){.additionalPointGrid{grid-template-columns:1fr}.addPointButton{width:100%}}

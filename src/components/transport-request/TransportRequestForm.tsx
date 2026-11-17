@@ -19,6 +19,7 @@ import {
   FileText,
   Image as ImageIcon,
   LoaderCircle,
+  Plus,
   RotateCcw,
   Send,
   Trash2,
@@ -54,6 +55,19 @@ type FieldErrors =
     string
   >;
 
+
+type AdditionalRoutePoint = {
+  id: string;
+  address: string;
+  mapUrl: string;
+  contactName: string;
+  contactPhone: string;
+  until: string;
+};
+
+function createAdditionalRoutePoint(): AdditionalRoutePoint {
+  return { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, address: '', mapUrl: '', contactName: '', contactPhone: '', until: '' };
+}
 
 type FormValues = {
   managerEmail:
@@ -364,6 +378,9 @@ export default function TransportRequestForm({
         '',
     });
 
+
+  const [additionalLoadingPoints, setAdditionalLoadingPoints] = useState<AdditionalRoutePoint[]>([]);
+  const [additionalUnloadingPoints, setAdditionalUnloadingPoints] = useState<AdditionalRoutePoint[]>([]);
 
   const [
     supplierInvoiceFiles,
@@ -795,6 +812,23 @@ export default function TransportRequestForm({
 
 
 
+  function addAdditionalPoint(kind: 'loading' | 'unloading') {
+    const point = createAdditionalRoutePoint();
+    if (kind === 'loading') setAdditionalLoadingPoints((current) => [...current, point]);
+    else setAdditionalUnloadingPoints((current) => [...current, point]);
+  }
+
+  function removeAdditionalPoint(kind: 'loading' | 'unloading', id: string) {
+    const setter = kind === 'loading' ? setAdditionalLoadingPoints : setAdditionalUnloadingPoints;
+    setter((current) => current.filter((point) => point.id !== id));
+  }
+
+  function updateAdditionalPoint(kind: 'loading' | 'unloading', id: string, field: keyof Omit<AdditionalRoutePoint, 'id'>, value: string) {
+    const setter = kind === 'loading' ? setAdditionalLoadingPoints : setAdditionalUnloadingPoints;
+    setter((current) => current.map((point) => point.id === id ? { ...point, [field]: value } : point));
+    clearFieldError(`additional-${kind}-${id}`);
+  }
+
   function validateForm() {
     const errors:
       FieldErrors = {};
@@ -1005,6 +1039,14 @@ export default function TransportRequestForm({
     }
 
 
+    for (const [kind, points] of [['loading', additionalLoadingPoints], ['unloading', additionalUnloadingPoints]] as const) {
+      for (const point of points) {
+        const key = `additional-${kind}-${point.id}`;
+        if (!point.address.trim() && !point.mapUrl.trim()) errors[key] = 'Укажите адрес или ссылку на Яндекс Карты.';
+        else if (point.mapUrl.trim() && !isValidYandexUrl(point.mapUrl)) errors[key] = 'Укажите корректную ссылку на Яндекс Карты.';
+      }
+    }
+
     setFieldErrors(
       errors
     );
@@ -1049,6 +1091,15 @@ export default function TransportRequestForm({
     );
   }
 
+
+  async function readApiJson(response: Response) {
+    const text = await response.text();
+    if (!text.trim()) return { success: false, message: 'Сервер проверки счетов вернул пустой ответ.' };
+    try { return JSON.parse(text); } catch {
+      console.error('TRANSPORT REQUEST API NON-JSON RESPONSE:', text);
+      return { success: false, message: response.ok ? 'Сервис проверки счетов вернул некорректный ответ. Попробуйте ещё раз.' : `Ошибка сервиса проверки счетов (${response.status}). Попробуйте ещё раз.` };
+    }
+  }
 
   async function uploadInvoiceFile(
     transportRequestId:
@@ -1098,7 +1149,7 @@ export default function TransportRequestForm({
 
 
     const result =
-      await response.json();
+      await readApiJson(response);
 
 
     if (
@@ -1168,7 +1219,7 @@ export default function TransportRequestForm({
 
 
     const result =
-      await response.json();
+      await readApiJson(response);
 
 
     if (
@@ -1404,6 +1455,9 @@ export default function TransportRequestForm({
         'unloadingUntil',
         values.unloadingUntil
       );
+
+      formData.set('additionalLoadingPoints', JSON.stringify(additionalLoadingPoints.map(({ id: _id, ...point }) => point)));
+      formData.set('additionalUnloadingPoints', JSON.stringify(additionalUnloadingPoints.map(({ id: _id, ...point }) => point)));
 
 
       formData.set(
@@ -1710,6 +1764,8 @@ export default function TransportRequestForm({
               setOurInvoiceFiles(
                 []
               );
+              setAdditionalLoadingPoints([]);
+              setAdditionalUnloadingPoints([]);
 
               setValues({
                 managerEmail:
@@ -3530,7 +3586,33 @@ export default function TransportRequestForm({
 
             </div>
 
-          </section>
+
+
+            <div className={styles.additionalPointsSection}>
+              <button type="button" className={styles.addPointButton} onClick={() => addAdditionalPoint('loading')}>
+                <Plus size={18} />
+                Добавить точку погрузки
+              </button>
+              {additionalLoadingPoints.map((point, index) => (
+                <div key={point.id} className={styles.additionalPointCard}>
+                  <div className={styles.additionalPointHeader}>
+                    <strong>Доп. погрузка {index + 1}</strong>
+                    <button type="button" className={styles.removePointButton} onClick={() => removeAdditionalPoint('loading', point.id)} aria-label="Удалить точку">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <input type="text" className={fieldClass(fieldErrors[`additional-loading-${point.id}`])} value={point.address} onChange={(event) => updateAdditionalPoint('loading', point.id, 'address', event.target.value)} placeholder="Адрес дополнительной погрузки" />
+                  <input type="url" className={fieldClass(fieldErrors[`additional-loading-${point.id}`])} value={point.mapUrl} onChange={(event) => updateAdditionalPoint('loading', point.id, 'mapUrl', event.target.value)} placeholder="Ссылка на Яндекс Карты (необязательно)" />
+                  <div className={styles.additionalPointGrid}>
+                    <input type="text" className={styles.input} value={point.contactName} onChange={(event) => updateAdditionalPoint('loading', point.id, 'contactName', event.target.value)} placeholder="Контактное лицо" />
+                    <input type="tel" className={styles.input} value={point.contactPhone} onChange={(event) => updateAdditionalPoint('loading', point.id, 'contactPhone', event.target.value)} placeholder="Телефон" />
+                    <input type="time" className={styles.input} value={point.until} onChange={(event) => updateAdditionalPoint('loading', point.id, 'until', event.target.value)} />
+                  </div>
+                  {fieldErrors[`additional-loading-${point.id}`] && <div className={styles.errorText}>{fieldErrors[`additional-loading-${point.id}`]}</div>}
+                </div>
+              ))}
+            </div>
+</section>
 
 
           <section
@@ -3888,7 +3970,33 @@ export default function TransportRequestForm({
 
             </div>
 
-          </section>
+
+
+            <div className={styles.additionalPointsSection}>
+              <button type="button" className={styles.addPointButton} onClick={() => addAdditionalPoint('unloading')}>
+                <Plus size={18} />
+                Добавить точку выгрузки
+              </button>
+              {additionalUnloadingPoints.map((point, index) => (
+                <div key={point.id} className={styles.additionalPointCard}>
+                  <div className={styles.additionalPointHeader}>
+                    <strong>Доп. выгрузка {index + 1}</strong>
+                    <button type="button" className={styles.removePointButton} onClick={() => removeAdditionalPoint('unloading', point.id)} aria-label="Удалить точку">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <input type="text" className={fieldClass(fieldErrors[`additional-unloading-${point.id}`])} value={point.address} onChange={(event) => updateAdditionalPoint('unloading', point.id, 'address', event.target.value)} placeholder="Адрес дополнительной выгрузки" />
+                  <input type="url" className={fieldClass(fieldErrors[`additional-unloading-${point.id}`])} value={point.mapUrl} onChange={(event) => updateAdditionalPoint('unloading', point.id, 'mapUrl', event.target.value)} placeholder="Ссылка на Яндекс Карты (необязательно)" />
+                  <div className={styles.additionalPointGrid}>
+                    <input type="text" className={styles.input} value={point.contactName} onChange={(event) => updateAdditionalPoint('unloading', point.id, 'contactName', event.target.value)} placeholder="Контактное лицо" />
+                    <input type="tel" className={styles.input} value={point.contactPhone} onChange={(event) => updateAdditionalPoint('unloading', point.id, 'contactPhone', event.target.value)} placeholder="Телефон" />
+                    <input type="time" className={styles.input} value={point.until} onChange={(event) => updateAdditionalPoint('unloading', point.id, 'until', event.target.value)} />
+                  </div>
+                  {fieldErrors[`additional-unloading-${point.id}`] && <div className={styles.errorText}>{fieldErrors[`additional-unloading-${point.id}`]}</div>}
+                </div>
+              ))}
+            </div>
+</section>
 
         </div>
 

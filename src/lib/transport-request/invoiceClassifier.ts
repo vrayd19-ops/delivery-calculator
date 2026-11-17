@@ -206,7 +206,8 @@ function isOurCompanyInn(
     string
 ): boolean {
   return (
-    isOurCompanyInn(value) ||
+    value ===
+      OUR_COMPANY_INN ||
     value ===
       SECOND_OUR_COMPANY_INN
   );
@@ -743,11 +744,12 @@ function looksLikeInvoice(
 function sectionContainsOurInn(
   section:
     string
-) {
+): boolean {
   return extractAllInns(
     section
-  ).includes(
-    OUR_COMPANY_INN
+  ).some(
+    (inn) =>
+      isOurCompanyInn(inn)
   );
 }
 
@@ -1460,9 +1462,8 @@ function buildMismatchMessage(
       'SUPPLIER'
   ) {
     return (
-      'Это счёт от поставщика. ' +
-      'ООО «ГГС» с ИНН 9204569514 указано как покупатель. ' +
-      'Переместите файл в блок «Счета от поставщика».'
+      'Это закупочный счёт на ООО «ГГС». ' +
+      'Загрузите его в блок «Счета от поставщика».'
     );
   }
 
@@ -1474,9 +1475,8 @@ function buildMismatchMessage(
       'OUR'
   ) {
     return (
-      'Это наш счёт. ' +
-      'ООО «ГГС» с ИНН 9204569514 указано как поставщик. ' +
-      'Переместите файл в блок «Наши счета».'
+      'Это наш счёт от ООО «ЛСТ». ' +
+      'Загрузите его в блок «Наши счета».'
     );
   }
 
@@ -1486,8 +1486,9 @@ function buildMismatchMessage(
       'UNKNOWN'
   ) {
     return (
-      'Не удалось определить роль ООО «ГГС» с ИНН 9204569514 в этом счёте. ' +
-      'Проверьте качество файла и убедитесь, что загружен именно счёт.'
+      'Не удалось определить нужную организацию в счёте. ' +
+      'Для закупки покупателем должно быть ООО «ГГС» (ИНН 9204569514), ' +
+      'для нашего счёта поставщиком должно быть ООО «ЛСТ» (ИНН 9718232572).'
     );
   }
 
@@ -2149,8 +2150,20 @@ function buildClassificationResult(
 
 
   const accepted =
-    detectedKind ===
-    input.expectedKind;
+    input.expectedKind ===
+      'SUPPLIER'
+      ? (
+          detectedKind ===
+            'SUPPLIER' &&
+          parsed.buyerInn ===
+            OUR_COMPANY_INN
+        )
+      : (
+          detectedKind ===
+            'OUR' &&
+          parsed.supplierInn ===
+            SECOND_OUR_COMPANY_INN
+        );
 
 
   const ourCompanyRole =
@@ -2174,8 +2187,11 @@ function buildClassificationResult(
         input.extracted
           .recognitionMethod,
 
-      ourCompanyInn:
-        OUR_COMPANY_INN,
+      ourCompanyInns:
+        [
+          OUR_COMPANY_INN,
+          SECOND_OUR_COMPANY_INN,
+        ],
 
       ourCompanyRole,
 

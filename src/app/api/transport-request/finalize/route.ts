@@ -2,6 +2,10 @@ import {
   NextRequest,
   NextResponse,
 } from 'next/server';
+import {
+  readTransportRequestInvoiceFile,
+} from '@/lib/transport-request/invoiceStorage';
+
 
 import {
   prisma,
@@ -14,6 +18,11 @@ import {
 import {
   sendTransportRequestTextToTelegram,
 } from '@/lib/telegram/transportRequestTelegram';
+
+import {
+  syncTransportRequestDocumentToPunkt,
+  syncTransportRequestToPunkt,
+} from '@/lib/integrations/punkt';
 
 
 export const runtime =
@@ -94,6 +103,14 @@ function parseExpectedCount(
   return value;
 }
 
+
+type AdditionalRoutePoint = { address?: string; mapUrl?: string; contactName?: string; contactPhone?: string; until?: string; };
+
+function routeAddressWithAdditionalPoints(primaryAddress: string | null, rawPoints: unknown, label: string) {
+  if(!Array.isArray(rawPoints) || rawPoints.length===0) return primaryAddress;
+  const lines=rawPoints.slice(0,10).map((item,index)=>{ const point=item&&typeof item==='object'?item as AdditionalRoutePoint:{}; const details=[point.address?.trim(),point.mapUrl?.trim()?`карта: ${point.mapUrl.trim()}`:'',point.contactName?.trim()?`контакт: ${point.contactName.trim()}`:'',point.contactPhone?.trim()?`тел.: ${point.contactPhone.trim()}`:'',point.until?.trim()?`до ${point.until.trim()}`:''].filter(Boolean).join(' | '); return `${label} ${index+1}: ${details}`; });
+  return [primaryAddress?.trim()||'',...lines].filter(Boolean).join('\n');
+}
 
 export async function POST(
   request:
@@ -508,8 +525,7 @@ export async function POST(
             .logisticsFitCheck,
 
         loadingAddress:
-          transportRequest
-            .loadingAddress,
+          routeAddressWithAdditionalPoints(transportRequest.loadingAddress, transportRequest.additionalLoadingPoints, 'Доп. погрузка'),
 
         loadingMapUrl:
           transportRequest
@@ -528,8 +544,7 @@ export async function POST(
             .loadingUntil,
 
         unloadingAddress:
-          transportRequest
-            .unloadingAddress,
+          routeAddressWithAdditionalPoints(transportRequest.unloadingAddress, transportRequest.additionalUnloadingPoints, 'Доп. выгрузка'),
 
         unloadingMapUrl:
           transportRequest
@@ -682,9 +697,254 @@ export async function POST(
   }
 
 
+  const supplierInvoiceForPunkt =
+    sentSupplierInvoices[0] ??
+    null;
+
+  const ourInvoiceForPunkt =
+    sentOurInvoices[0] ??
+    null;
+
   /*
    * =========================================
-   * 14. УСПЕХ
+   * 14. ПЕРЕДАЁМ ЗАЯВКУ В ПУНКТ
+   * =========================================
+   */
+  let punktSync:
+    {
+      success:
+        boolean;
+
+      action?:
+        string;
+
+      error?:
+        string;
+    } = {
+      success:
+        false,
+    };
+
+
+  try {
+    const punktResult =
+      await syncTransportRequestToPunkt({
+        id:
+          transportRequest.id,
+
+        requestNumber:
+          transportRequest.requestNumber,
+
+        createdAt:
+          transportRequest.createdAt,
+
+        managerEmail:
+          transportRequest.managerEmail,
+
+        customer:
+          transportRequest.customer,
+
+        loadingDate:
+          transportRequest.loadingDate,
+
+        desiredPickupTime:
+          transportRequest.desiredPickupTime,
+
+        preferredVehicleName:
+          transportRequest.preferredVehicleName,
+
+        totalWeight:
+          transportRequest.totalWeight,
+
+        cargoLength:
+          transportRequest.cargoLength,
+
+        needsStakes:
+          transportRequest.needsStakes,
+
+        logisticsFitCheck:
+          transportRequest.logisticsFitCheck,
+
+        loadingAddress:
+          routeAddressWithAdditionalPoints(transportRequest.loadingAddress, transportRequest.additionalLoadingPoints, 'Доп. погрузка'),
+
+        loadingMapUrl:
+          transportRequest.loadingMapUrl,
+
+        loadingContactName:
+          transportRequest.loadingContactName,
+
+        loadingContactPhone:
+          transportRequest.loadingContactPhone,
+
+        loadingUntil:
+          transportRequest.loadingUntil,
+
+        unloadingAddress:
+          routeAddressWithAdditionalPoints(transportRequest.unloadingAddress, transportRequest.additionalUnloadingPoints, 'Доп. выгрузка'),
+
+        unloadingMapUrl:
+          transportRequest.unloadingMapUrl,
+
+        unloadingContactName:
+          transportRequest.unloadingContactName,
+
+        unloadingContactPhone:
+          transportRequest.unloadingContactPhone,
+
+        unloadingUntil:
+          transportRequest.unloadingUntil,
+
+        comment:
+          transportRequest.comment,
+
+        invoiceFileName,
+
+        customerInvoiceNumber:
+          ourInvoiceForPunkt?.invoiceNumber ??
+          null,
+
+        customerInvoiceDate:
+          ourInvoiceForPunkt?.invoiceDate ??
+          null,
+
+        saleAmount:
+          ourInvoiceForPunkt?.invoiceAmount ??
+          null,
+
+        supplierInvoiceNumber:
+          supplierInvoiceForPunkt?.invoiceNumber ??
+          null,
+
+        supplierInvoiceDate:
+          supplierInvoiceForPunkt?.invoiceDate ??
+          null,
+
+        purchaseAmount:
+          supplierInvoiceForPunkt?.invoiceAmount ??
+          null,
+      });
+
+        for (
+          const invoice of sentSupplierInvoices
+        ) {
+          const file =
+            await readTransportRequestInvoiceFile(
+              invoice.id
+            );
+
+          await syncTransportRequestDocumentToPunkt({
+            sourceRequestId:
+              transportRequest.id,
+
+            type:
+              'SUPPLIER_INVOICE',
+
+            fileName:
+              invoice.fileName,
+
+            mimeType:
+              invoice.fileType,
+
+            invoiceNumber:
+              invoice.invoiceNumber,
+
+            invoiceDate:
+              invoice.invoiceDate,
+
+            file,
+          });
+        }
+
+        for (
+          const invoice of sentOurInvoices
+        ) {
+          const file =
+            await readTransportRequestInvoiceFile(
+              invoice.id
+            );
+
+          await syncTransportRequestDocumentToPunkt({
+            sourceRequestId:
+              transportRequest.id,
+
+            type:
+              'CUSTOMER_INVOICE',
+
+            fileName:
+              invoice.fileName,
+
+            mimeType:
+              invoice.fileType,
+
+            invoiceNumber:
+              invoice.invoiceNumber,
+
+            invoiceDate:
+              invoice.invoiceDate,
+
+            file,
+          });
+        }
+
+        console.log(
+          'PUNKT DOCUMENT SYNC SUCCESS:',
+          {
+            requestNumber:
+              transportRequest.requestNumber,
+
+            supplierDocuments:
+              sentSupplierInvoices.length,
+
+            customerDocuments:
+              sentOurInvoices.length,
+          }
+        );
+
+
+    punktSync = {
+      success:
+        true,
+
+      action:
+        punktResult.action,
+    };
+
+
+    console.log(
+      'TRANSPORT REQUEST PUNKT SYNC SUCCESS:',
+      {
+        requestNumber:
+          transportRequest.requestNumber,
+
+        action:
+          punktResult.action,
+      }
+    );
+  } catch (
+    error
+  ) {
+    console.error(
+      'TRANSPORT REQUEST PUNKT SYNC ERROR:',
+      error
+    );
+
+
+    punktSync = {
+      success:
+        false,
+
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Неизвестная ошибка синхронизации с ПУНКТ.',
+    };
+  }
+
+
+  /*
+   * =========================================
+   * 15. УСПЕХ
    * =========================================
    */
   return NextResponse.json(
@@ -707,6 +967,8 @@ export async function POST(
 
       message:
         'Заявка и все обязательные счета успешно отправлены.',
+
+      punktSync,
     }
   );
 }

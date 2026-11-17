@@ -102,6 +102,15 @@ function errorResponse(
 }
 
 
+type AdditionalRoutePoint = { address: string; mapUrl: string; contactName: string; contactPhone: string; until: string; };
+
+function parseAdditionalRoutePoints(formData: FormData, name: string): AdditionalRoutePoint[] {
+  const raw=formData.get(name); if(typeof raw !== 'string' || !raw.trim()) return [];
+  let parsed: unknown; try { parsed=JSON.parse(raw); } catch { throw new Error(`Некорректные дополнительные точки: ${name}`); }
+  if(!Array.isArray(parsed)) throw new Error(`Некорректные дополнительные точки: ${name}`);
+  return parsed.slice(0,10).map((item)=>{ const source=item&&typeof item==='object'?item as Record<string,unknown>:{}; const read=(key:string)=>typeof source[key]==='string'?source[key].trim().slice(0,500):''; const point={address:read('address'),mapUrl:read('mapUrl'),contactName:read('contactName'),contactPhone:read('contactPhone'),until:read('until')}; if(!point.address&&!point.mapUrl) throw new Error('Для каждой дополнительной точки укажите адрес или ссылку на карту.'); return point; });
+}
+
 function getClientIp(
   request:
     NextRequest
@@ -444,6 +453,15 @@ export async function POST(
     );
   }
 
+
+  let additionalLoadingPoints: AdditionalRoutePoint[];
+  let additionalUnloadingPoints: AdditionalRoutePoint[];
+  try {
+    additionalLoadingPoints=parseAdditionalRoutePoints(formData,'additionalLoadingPoints');
+    additionalUnloadingPoints=parseAdditionalRoutePoints(formData,'additionalUnloadingPoints');
+  } catch(error) {
+    return errorResponse(error instanceof Error ? error.message : 'Не удалось прочитать дополнительные точки маршрута.',400);
+  }
 
   /*
    * =========================================
@@ -842,6 +860,9 @@ export async function POST(
 
             unloadingUntil:
               data.unloadingUntil,
+
+            additionalLoadingPoints,
+            additionalUnloadingPoints,
 
             invoiceFileName:
               'Счета загружаются отдельно',

@@ -52,16 +52,291 @@ export const metadata: Metadata = {
 };
 
 
+type MenuIconName =
+  | 'plus'
+  | 'truck'
+  | 'cube'
+  | 'chart'
+  | 'transport'
+  | 'rub'
+  | 'services'
+  | 'users';
+
+
+function MenuIcon({
+  name,
+}: {
+  name:
+    MenuIconName;
+}) {
+  if (
+    name ===
+    'plus'
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M12 5v14M5 12h14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+
+  if (
+    name ===
+    'truck'
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M3.5 6.5h10v9h-10z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M13.5 9h3.4l3.1 3.3v3.2h-6.5z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+
+        <circle
+          cx="7"
+          cy="17.5"
+          r="1.8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+        />
+
+        <circle
+          cx="17.3"
+          cy="17.5"
+          r="1.8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+        />
+      </svg>
+    );
+  }
+
+
+  if (
+    name ===
+    'cube'
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M12 3.2 20 7.6 12 12 4 7.6 12 3.2Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M4 7.6V16.4L12 20.8V12L4 7.6Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M20 7.6V16.4L12 20.8V12L20 7.6Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+
+  if (
+    name ===
+    'chart'
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M5 19V11M12 19V5M19 19V8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+
+  if (
+    name ===
+    'transport'
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M4 7.5h16M5.5 7.5v9h13v-9"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M8 5h8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+
+        <circle
+          cx="8"
+          cy="18.2"
+          r="1.4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+
+        <circle
+          cx="16"
+          cy="18.2"
+          r="1.4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      </svg>
+    );
+  }
+
+
+  if (
+    name ===
+    'rub'
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M8 4h5.3a4 4 0 0 1 0 8H8M8 4v16M6 14h8M6 17h7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+
+  if (
+    name ===
+    'services'
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M12 3.5 20.5 8 12 12.5 3.5 8 12 3.5Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="8"
+        r="3.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+
+      <path
+        d="M5.5 20c.6-4 3.1-6 6.5-6s5.9 2 6.5 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+
 function shortAddress(
-  value?: string | null
+  value?:
+    string |
+    null
 ) {
-  if (!value) {
+  if (
+    !value
+  ) {
     return '—';
   }
 
+
   const parts =
     value
-      .split(',')
+      .split(
+        ','
+      )
       .map(
         (
           item
@@ -72,12 +347,14 @@ function shortAddress(
         Boolean
       );
 
+
   if (
     parts.length ===
     0
   ) {
     return value;
   }
+
 
   const useful =
     parts.filter(
@@ -94,15 +371,17 @@ function shortAddress(
           )
     );
 
+
   if (
     useful.length >=
     2
   ) {
     return useful[
       useful.length -
-        2
+      2
     ];
   }
+
 
   return (
     useful[0] ||
@@ -112,7 +391,8 @@ function shortAddress(
 
 
 function rub(
-  kopeks: bigint
+  kopeks:
+    bigint
 ) {
   return new Intl.NumberFormat(
     'ru-RU',
@@ -123,7 +403,8 @@ function rub(
   ).format(
     Number(
       kopeks
-    ) / 100
+    ) /
+    100
   );
 }
 
@@ -137,7 +418,10 @@ export default async function RootLayout({
   const user =
     await getCurrentUser();
 
-  if (!user) {
+
+  if (
+    !user
+  ) {
     return (
       <html lang="ru">
 
@@ -162,32 +446,34 @@ export default async function RootLayout({
 
 
   const recentCalculations =
-    await prisma.calculation.findMany({
-      where:
-        isAdmin
-          ? undefined
-          : {
-              userId:
-                user.id,
-            },
+    await prisma
+      .calculation
+      .findMany({
+        where:
+          isAdmin
+            ? undefined
+            : {
+                userId:
+                  user.id,
+              },
 
-      include: {
-        points: {
-          orderBy: {
-            sortOrder:
-              'asc',
+        include: {
+          points: {
+            orderBy: {
+              sortOrder:
+                'asc',
+            },
           },
         },
-      },
 
-      orderBy: {
-        createdAt:
-          'desc',
-      },
+        orderBy: {
+          createdAt:
+            'desc',
+        },
 
-      take:
-        3,
-    });
+        take:
+          3,
+      });
 
 
   return (
@@ -200,29 +486,40 @@ export default async function RootLayout({
           <aside className="app-sidebar">
 
             {/*
-             * =====================================
-             * ЛОГОТИП
-             * =====================================
+             * =========================================
+             * СТАРОЕ НАЗВАНИЕ СЛЕВА
+             * ОСТАВЛЯЕМ
+             * =========================================
              */}
             <Link
               href="/"
               className="brt-logo-image-link"
               aria-label="Быстрый Расчёт Транспорта — главная"
             >
+
               <div className="brt-sidebar-brand">
-                <span className="brt-sidebar-brand-line">Быстрый</span>
+
+                <span className="brt-sidebar-brand-line">
+                  Быстрый
+                </span>
+
                 <span className="brt-sidebar-brand-line brt-sidebar-brand-accent">
                   Расчёт
                 </span>
-                <span className="brt-sidebar-brand-line">Транспорта</span>
+
+                <span className="brt-sidebar-brand-line">
+                  Транспорта
+                </span>
+
               </div>
+
             </Link>
 
 
             {/*
-             * =====================================
+             * =========================================
              * ОСНОВНОЕ МЕНЮ
-             * =====================================
+             * =========================================
              */}
             <nav className="side-menu">
 
@@ -231,8 +528,12 @@ export default async function RootLayout({
                 className="side-menu-item side-menu-main"
               >
 
-                <span className="side-icon side-icon-dark">
-                  +
+                <span className="side-icon">
+
+                  <MenuIcon
+                    name="plus"
+                  />
+
                 </span>
 
                 <span>
@@ -242,18 +543,17 @@ export default async function RootLayout({
               </Link>
 
 
-              {/*
-               * =================================
-               * ЗАЯВКА НА ТРАНСПОРТ
-               * =================================
-               */}
               <Link
                 href="/transport-request"
                 className="side-menu-item"
               >
 
                 <span className="side-icon">
-                  ↗
+
+                  <MenuIcon
+                    name="truck"
+                  />
+
                 </span>
 
                 <span>
@@ -263,22 +563,21 @@ export default async function RootLayout({
               </Link>
 
 
-              {/*
-               * =================================
-               * ДОВЕРЕННОСТИ
-               * =================================
-               */}
               <Link
-                href="/powers-of-attorney"
-                className="side-menu-item"
+                href="/transport-loading"
+                className="side-menu-item side-menu-loading"
               >
 
                 <span className="side-icon">
-                  ◇
+
+                  <MenuIcon
+                    name="cube"
+                  />
+
                 </span>
 
                 <span>
-                  Доверенности
+                  Комплектация транспорта
                 </span>
 
               </Link>
@@ -290,7 +589,11 @@ export default async function RootLayout({
               >
 
                 <span className="side-icon">
-                  ▤
+
+                  <MenuIcon
+                    name="chart"
+                  />
+
                 </span>
 
                 <span>
@@ -303,9 +606,9 @@ export default async function RootLayout({
 
 
               {/*
-               * =================================
-               * ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА
-               * =================================
+               * =========================================
+               * АДМИНИСТРАТОР
+               * =========================================
                */}
               {isAdmin && (
                 <>
@@ -321,7 +624,11 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-                      🚚
+
+                      <MenuIcon
+                        name="transport"
+                      />
+
                     </span>
 
                     <span>
@@ -337,7 +644,11 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-                      ₽
+
+                      <MenuIcon
+                        name="rub"
+                      />
+
                     </span>
 
                     <span>
@@ -353,7 +664,11 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-                      ◇
+
+                      <MenuIcon
+                        name="services"
+                      />
+
                     </span>
 
                     <span>
@@ -374,7 +689,11 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-                      👤
+
+                      <MenuIcon
+                        name="users"
+                      />
+
                     </span>
 
                     <span>
@@ -389,22 +708,15 @@ export default async function RootLayout({
             </nav>
 
 
+            <div className="sidebar-spacer" />
+
+
             {/*
-             * =====================================
+             * =========================================
              * ПОСЛЕДНИЕ РАСЧЁТЫ
-             * =====================================
+             * =========================================
              */}
-            <div
-              className="sidebar-recent"
-              style={
-                isAdmin
-                  ? undefined
-                  : {
-                      marginTop:
-                        24,
-                    }
-              }
-            >
+            <div className="sidebar-recent">
 
               <div className="sidebar-recent-heading">
 
@@ -458,14 +770,17 @@ export default async function RootLayout({
                         calculation
                           .points;
 
+
                       const firstPoint =
                         points[0];
+
 
                       const lastPoint =
                         points[
                           points.length -
-                            1
+                          1
                         ];
+
 
                       const from =
                         shortAddress(
@@ -473,11 +788,13 @@ export default async function RootLayout({
                             ?.displayAddress
                         );
 
+
                       const to =
                         shortAddress(
                           lastPoint
                             ?.displayAddress
                         );
+
 
                       return (
                         <Link
@@ -528,25 +845,27 @@ export default async function RootLayout({
 
                           <div className="sidebar-recent-date">
 
-                            {calculation.createdAt.toLocaleString(
-                              'ru-RU',
-                              {
-                                day:
-                                  '2-digit',
+                            {calculation
+                              .createdAt
+                              .toLocaleString(
+                                'ru-RU',
+                                {
+                                  day:
+                                    '2-digit',
 
-                                month:
-                                  '2-digit',
+                                  month:
+                                    '2-digit',
 
-                                year:
-                                  'numeric',
+                                  year:
+                                    'numeric',
 
-                                hour:
-                                  '2-digit',
+                                  hour:
+                                    '2-digit',
 
-                                minute:
-                                  '2-digit',
-                              }
-                            )}
+                                  minute:
+                                    '2-digit',
+                                }
+                              )}
 
                           </div>
 
@@ -560,39 +879,17 @@ export default async function RootLayout({
 
             </div>
 
-
-            {!isAdmin && (
-              <div
-                style={{
-                  marginTop:
-                    14,
-
-                  padding:
-                    '11px 12px',
-
-                  color:
-                    '#99918b',
-
-                  fontSize:
-                    9,
-
-                  lineHeight:
-                    1.5,
-
-                  textAlign:
-                    'center',
-                }}
-              >
-                Расчёты сохраняются
-                автоматически
-              </div>
-            )}
-
           </aside>
 
 
           <main className="app-workspace">
 
+            {/*
+             * =========================================
+             * СТАРАЯ СИНЯЯ ШАПКА
+             * ОСТАВЛЯЕМ
+             * =========================================
+             */}
             <header className="app-header">
 
               <Link
@@ -600,11 +897,13 @@ export default async function RootLayout({
                 className="brt-header-banner"
                 aria-label="БРТ Логистика — главная"
               >
+
                 <img
                   src="/brt-header-logo.png"
                   alt="БРТ Логистика"
                   className="brt-header-banner-image"
                 />
+
               </Link>
 
 
@@ -629,9 +928,11 @@ export default async function RootLayout({
 
 
                   <div className="user-role">
+
                     {isAdmin
                       ? 'Администратор'
                       : 'Менеджер'}
+
                   </div>
 
                 </div>
