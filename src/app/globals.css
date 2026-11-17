@@ -3178,3 +3178,112 @@ tbody tr:hover {
 /* Не меняем .app-header, .brt-header-banner, .brt-sidebar-brand */
 
 /* === /BRT EXACT VISUAL MATCH 2026 === */
+
+/* === BRT RESTORE BRAND PROFILE FINAL === */
+
+.brt-logo-image-link {
+  width: 100% !important;
+  height: 96px !important;
+  min-height: 96px !important;
+  flex: 0 0 96px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  margin: 0 0 10px !important;
+  padding: 10px 8px !important;
+  overflow: visible !important;
+}
+
+.brt-sidebar-brand {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 1px !important;
+  overflow: visible !important;
+}
+
+.brt-sidebar-brand-line {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #18263f !important;
+  font-size: 23px !important;
+  line-height: .98 !important;
+  font-weight: 800 !important;
+  letter-spacing: -.045em !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  overflow: visible !important;
+}
+
+.brt-sidebar-brand-accent {
+  color: #2e5f9e !important;
+}
+
+.header-right {
+  position: relative !important;
+  z-index: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: auto !important;
+  margin-left: auto !important;
+  padding: 8px 10px !important;
+  background: rgba(7,16,29,.34) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.user-avatar {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  flex: 0 0 42px !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #17233a !important;
+  background: #fff !important;
+  border-radius: 50% !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+}
+
+.user-block {
+  min-width: 145px !important;
+  width: auto !important;
+}
+
+.user-email {
+  max-width: 190px !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 720 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.user-role {
+  margin-top: 3px !important;
+  color: rgba(255,255,255,.72) !important;
+  font-size: 9px !important;
+  white-space: nowrap !important;
+}
+
+.header-right .btn {
+  width: auto !important;
+  min-width: 72px !important;
+  min-height: 37px !important;
+  margin-left: 7px !important;
+  padding: 8px 15px !important;
+  color: #17233a !important;
+  background: #fff !important;
+  border: 1px solid rgba(255,255,255,.8) !important;
+  border-radius: 7px !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18) !important;
+}
+
+/* === /BRT RESTORE BRAND PROFILE FINAL === */

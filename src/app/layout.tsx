@@ -28,6 +28,8 @@ import {
 
 import LogoutButton from '@/components/LogoutButton';
 
+import ManagerLaunchAnnouncement from '@/components/ManagerLaunchAnnouncement';
+
 
 export const metadata: Metadata = {
   title: {
@@ -494,6 +496,12 @@ export default async function RootLayout({
       <body>
 
         <div className="app-shell">
+
+          {!isAdmin && (
+            <ManagerLaunchAnnouncement
+              userEmail={user.email}
+            />
+          )}
 
           <aside className="app-sidebar">
 

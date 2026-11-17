@@ -526,8 +526,6 @@ export default function Calculator() {
 
   return (
     <div className="calculator-dashboard">
-      <ManagerLaunchAnnouncement />
-
       {/*
        * ==========================================
        * ЛЕВАЯ ЧАСТЬ
