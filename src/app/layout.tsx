@@ -7,6 +7,18 @@ import type {
 import Link from 'next/link';
 
 import {
+  Plus,
+  ClipboardList,
+  PackageCheck,
+  FileSignature,
+  History,
+  Truck,
+  BadgeRussianRuble,
+  Layers3,
+  Users,
+} from 'lucide-react';
+
+import {
   getCurrentUser,
 } from '@/lib/auth';
 
@@ -529,11 +541,7 @@ export default async function RootLayout({
               >
 
                 <span className="side-icon">
-
-                  <MenuIcon
-                    name="plus"
-                  />
-
+                  <Plus aria-hidden="true" />
                 </span>
 
                 <span>
@@ -549,11 +557,7 @@ export default async function RootLayout({
               >
 
                 <span className="side-icon">
-
-                  <MenuIcon
-                    name="truck"
-                  />
-
+                  <ClipboardList aria-hidden="true" />
                 </span>
 
                 <span>
@@ -569,11 +573,7 @@ export default async function RootLayout({
               >
 
                 <span className="side-icon">
-
-                  <MenuIcon
-                    name="cube"
-                  />
-
+                  <PackageCheck aria-hidden="true" />
                 </span>
 
                 <span>
@@ -589,11 +589,7 @@ export default async function RootLayout({
               >
 
                 <span className="side-icon">
-
-                  <MenuIcon
-                    name="chart"
-                  />
-
+                  <History aria-hidden="true" />
                 </span>
 
                 <span>
@@ -624,12 +620,8 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-
-                      <MenuIcon
-                        name="transport"
-                      />
-
-                    </span>
+                  <Truck aria-hidden="true" />
+                </span>
 
                     <span>
                       Транспорт
@@ -644,12 +636,8 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-
-                      <MenuIcon
-                        name="rub"
-                      />
-
-                    </span>
+                  <BadgeRussianRuble aria-hidden="true" />
+                </span>
 
                     <span>
                       Тарифы
@@ -664,12 +652,8 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-
-                      <MenuIcon
-                        name="services"
-                      />
-
-                    </span>
+                  <Layers3 aria-hidden="true" />
+                </span>
 
                     <span>
                       Доп. услуги
@@ -689,12 +673,8 @@ export default async function RootLayout({
                   >
 
                     <span className="side-icon">
-
-                      <MenuIcon
-                        name="users"
-                      />
-
-                    </span>
+                  <Users aria-hidden="true" />
+                </span>
 
                     <span>
                       Пользователи

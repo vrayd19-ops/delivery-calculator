@@ -2941,259 +2941,240 @@ tbody tr:hover {
   }
 }
 
-/* === BRT FINAL VISUAL REFRESH 2026 === */
+
+
+
+/* === BRT EXACT VISUAL MATCH 2026 === */
 
 /*
- * ВАЖНО:
- * .app-header и блок бренда/логотипа намеренно не переопределяем.
- * Они остаются такими, как в текущей версии BRT.
+ * ШАПКУ И ЛОГОТИП НЕ ТРОГАЕМ.
+ * Меняем только пространство ниже шапки, меню и визуальные элементы.
  */
 
 :root {
-  --brt-blue-950: #072744;
-  --brt-blue-900: #0b355a;
-  --brt-blue-800: #124c7d;
-  --brt-blue-700: #1765a6;
-  --brt-orange: #ff8800;
-  --brt-orange-hover: #ed7600;
-  --brt-glass: rgba(255, 255, 255, 0.92);
-  --brt-border: rgba(18, 76, 125, 0.14);
-  --brt-shadow: 0 18px 44px rgba(10, 47, 80, 0.13);
+  --brt-deep: #072b4b;
+  --brt-deep-2: #0b3b64;
+  --brt-blue: #176aa8;
+  --brt-sky: #d9eefc;
+  --brt-orange: #ff8a00;
+  --brt-orange-2: #f07800;
 }
 
-/* Основной фон: ярче, но не мешает чтению */
+/* ---------------------------------------------------------
+   ОБЪЁМНЫЙ ФОН: небо + горизонт + дорожная перспектива
+   --------------------------------------------------------- */
 .app-workspace {
   position: relative;
   isolation: isolate;
+  min-height: 100vh;
   background:
     radial-gradient(
-      circle at 92% 14%,
-      rgba(255, 164, 67, 0.34) 0,
-      rgba(255, 164, 67, 0.10) 24%,
-      transparent 45%
+      ellipse at 86% 19%,
+      rgba(255, 183, 105, 0.72) 0%,
+      rgba(255, 203, 145, 0.26) 19%,
+      transparent 42%
     ),
     radial-gradient(
-      circle at 24% 12%,
-      rgba(90, 178, 255, 0.32) 0,
-      rgba(90, 178, 255, 0.08) 31%,
-      transparent 50%
+      ellipse at 25% 10%,
+      rgba(255,255,255,0.90) 0%,
+      rgba(180,222,249,0.48) 27%,
+      transparent 55%
     ),
     linear-gradient(
       180deg,
-      #dcecf9 0%,
-      #edf5fb 25%,
-      #f4f1eb 64%,
-      #e7edf2 100%
+      #c7e6fb 0%,
+      #e3f2fc 23%,
+      #f4f6f4 46%,
+      #d7e1e8 68%,
+      #8ca0af 100%
     );
+  background-attachment: fixed;
 }
 
 .app-workspace::before {
   content: "";
   position: fixed;
-  z-index: -1;
+  z-index: -2;
+  pointer-events: none;
   left: var(--sidebar-width);
   right: 0;
-  bottom: -13vh;
-  height: 47vh;
-  pointer-events: none;
-  opacity: 0.42;
+  bottom: -6vh;
+  height: 45vh;
+  opacity: 0.78;
   background:
     linear-gradient(
-      106deg,
-      transparent 0 38%,
-      rgba(255,255,255,.72) 38.2% 38.7%,
-      transparent 39% 47%,
-      rgba(255,255,255,.52) 47.2% 47.6%,
-      transparent 48% 100%
+      102deg,
+      transparent 0 39%,
+      rgba(255,255,255,.88) 39.15% 39.55%,
+      transparent 39.7% 47%,
+      rgba(255,255,255,.76) 47.15% 47.5%,
+      transparent 47.7% 100%
     ),
     linear-gradient(
       180deg,
-      rgba(42, 67, 88, 0.03),
-      rgba(35, 52, 67, 0.23)
+      rgba(104, 124, 139, 0.05),
+      rgba(43, 58, 70, 0.68)
     );
-  transform: perspective(500px) rotateX(58deg) scaleX(1.35);
+  transform: perspective(720px) rotateX(59deg) scaleX(1.34);
   transform-origin: bottom center;
+  filter: blur(.1px);
 }
 
-/* Левое меню: верх с текущим логотипом остаётся светлым */
+.app-workspace::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  left: var(--sidebar-width);
+  right: 0;
+  top: 104px;
+  height: 200px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.10),
+      rgba(255,255,255,.48) 70%,
+      transparent 100%
+    );
+}
+
+/* ---------------------------------------------------------
+   SIDEBAR: бренд сверху прежний, ниже — глубокий синий
+   --------------------------------------------------------- */
 .app-sidebar {
   background:
     linear-gradient(
       180deg,
-      #f8f5f2 0,
-      #f8f5f2 118px,
-      var(--brt-blue-950) 119px,
-      #092d4f 100%
+      #f8f5f2 0 120px,
+      #0a365b 121px,
+      #062844 100%
     );
-  border-right: 1px solid rgba(7, 39, 68, 0.25);
-  box-shadow: 10px 0 30px rgba(10, 44, 73, 0.08);
+  border-right: 1px solid rgba(5, 35, 59, .22);
+  box-shadow: 10px 0 30px rgba(5, 35, 59, .10);
 }
 
-/* Согласованный вид пунктов меню */
 .side-menu {
   gap: 7px;
 }
 
 .side-menu-item {
-  min-height: 46px;
+  min-height: 47px;
+  gap: 12px;
+  padding: 8px 12px;
   color: rgba(255,255,255,.92);
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.035);
-  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(159,211,246,.13);
+  border-radius: 11px;
+  font-weight: 650;
 }
 
 .side-menu-item:hover {
   color: #fff;
-  background: rgba(36, 126, 195, 0.30);
-  border-color: rgba(130, 203, 255, 0.24);
+  background: rgba(30, 113, 174, .36);
+  border-color: rgba(153, 215, 255, .30);
   transform: translateX(2px);
 }
 
 .side-menu-main {
   color: #fff;
-  background:
-    linear-gradient(
-      135deg,
-      #ff9800 0%,
-      var(--brt-orange) 52%,
-      #ed7200 100%
-    );
-  border-color: rgba(255, 176, 70, 0.72);
-  box-shadow:
-    0 10px 22px rgba(238, 116, 0, 0.22);
+  background: linear-gradient(135deg, #ff9d14, var(--brt-orange-2));
+  border-color: rgba(255, 181, 77, .75);
+  box-shadow: 0 8px 22px rgba(229, 112, 0, .25);
 }
 
 .side-menu-main:hover {
-  background:
-    linear-gradient(
-      135deg,
-      #ff9e12,
-      var(--brt-orange-hover)
-    );
+  background: linear-gradient(135deg, #ffa82b, #e96e00);
+}
+
+/* Настоящие SVG-иконки, без квадратных плашек */
+.side-icon,
+.side-icon-dark {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #e7f5ff;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0;
+  font-size: 0;
+}
+
+.side-icon svg,
+.side-icon-dark svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  fill: none;
+}
+
+.side-menu-main .side-icon,
+.side-menu-main .side-icon-dark {
+  color: #fff;
 }
 
 .side-section-label {
-  color: rgba(188, 217, 239, 0.68);
+  color: rgba(201,226,244,.68);
+  margin-top: 22px;
 }
 
-/* Нормальные одинаковые иконки */
-.side-icon {
-  width: 31px;
-  height: 31px;
-  flex-basis: 31px;
-  color: #d9edfc;
-  background: rgba(255,255,255,.075);
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 9px;
-  font-size: 16px;
-}
-
-.side-icon svg {
-  width: 18px;
-  height: 18px;
-  stroke: currentColor;
-  stroke-width: 1.9;
-}
-
-.side-menu-main .side-icon {
-  color: #fff;
-  background: rgba(255,255,255,.13);
-  border-color: rgba(255,255,255,.15);
-}
-
-/* Недавние расчёты читаемы на тёмном меню */
+/* ---------------------------------------------------------
+   НЕДАВНИЕ РАСЧЁТЫ
+   --------------------------------------------------------- */
 .sidebar-recent {
   color: #17314b;
-  background: rgba(245, 250, 255, 0.94);
-  border-color: rgba(255,255,255,.42);
-  box-shadow: 0 14px 28px rgba(3, 23, 41, 0.18);
+  background: rgba(248,252,255,.96);
+  border: 1px solid rgba(255,255,255,.52);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(3,26,45,.22);
   backdrop-filter: blur(12px);
 }
 
-/* Контент */
+/* ---------------------------------------------------------
+   КОНТЕНТ / КАРТОЧКИ
+   --------------------------------------------------------- */
 .app-content {
   position: relative;
 }
 
-/* Карточки и панели — белое стекло поверх фона */
 .card,
-.app-content section,
 .app-content form > section {
-  border-color: var(--brt-border);
-}
-
-.card {
-  background: var(--brt-glass);
-  box-shadow: var(--brt-shadow);
+  background: rgba(255,255,255,.92);
+  border-color: rgba(15,70,108,.13);
+  box-shadow: 0 16px 38px rgba(21,66,96,.11);
   backdrop-filter: blur(10px);
 }
 
-/* Формы */
-.field input,
-.field select,
-.field textarea,
 .app-content input,
 .app-content select,
 .app-content textarea {
-  border-color: rgba(18, 76, 125, 0.17);
+  background: rgba(255,255,255,.94);
+  border-color: rgba(27,87,126,.18);
 }
 
-.field input:focus,
-.field select:focus,
-.field textarea:focus,
 .app-content input:focus,
 .app-content select:focus,
 .app-content textarea:focus {
   outline: none;
-  border-color: rgba(23, 101, 166, 0.55);
-  box-shadow: 0 0 0 3px rgba(52, 137, 205, 0.12);
+  border-color: rgba(23,106,168,.56);
+  box-shadow: 0 0 0 3px rgba(23,106,168,.12);
 }
 
-/* Основные кнопки — фирменный оранжевый */
 .btn:not(.secondary) {
-  background:
-    linear-gradient(
-      135deg,
-      #ff9700,
-      var(--brt-orange)
-    );
-  border-color: var(--brt-orange);
-  box-shadow: 0 8px 20px rgba(238, 116, 0, 0.17);
+  background: linear-gradient(135deg, #ff9b0b, #f27c00);
+  border-color: #f58400;
+  box-shadow: 0 8px 22px rgba(234,112,0,.20);
 }
 
 .btn:hover:not(:disabled):not(.secondary) {
-  background:
-    linear-gradient(
-      135deg,
-      #ff9f16,
-      var(--brt-orange-hover)
-    );
-  border-color: var(--brt-orange-hover);
+  background: linear-gradient(135deg, #ffa82c, #e96e00);
+  border-color: #e96e00;
 }
 
-/* Иконки внутри контента */
-.app-content svg {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
+/* Не меняем .app-header, .brt-header-banner, .brt-sidebar-brand */
 
-/* Мобильная версия */
-@media (max-width: 900px) {
-  .app-workspace::before {
-    left: 0;
-    opacity: .26;
-  }
-
-  .app-sidebar {
-    background:
-      linear-gradient(
-        180deg,
-        #f8f5f2 0,
-        #f8f5f2 108px,
-        var(--brt-blue-950) 109px,
-        #092d4f 100%
-      );
-  }
-}
-
-/* === /BRT FINAL VISUAL REFRESH 2026 === */
+/* === /BRT EXACT VISUAL MATCH 2026 === */
