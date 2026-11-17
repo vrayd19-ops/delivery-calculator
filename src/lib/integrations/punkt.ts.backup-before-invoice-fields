@@ -1,0 +1,268 @@
+﻿type PunktShipmentInput = {
+  id: string;
+  requestNumber: string;
+  createdAt: Date;
+
+  managerEmail: string;
+  customer: string;
+
+  loadingDate: Date | null;
+  desiredPickupTime: string | null;
+  preferredVehicleName: string | null;
+
+  totalWeight: unknown;
+  cargoLength: unknown;
+
+  needsStakes: boolean;
+  logisticsFitCheck: boolean;
+
+  loadingAddress: string | null;
+  loadingMapUrl: string | null;
+  loadingContactName: string | null;
+  loadingContactPhone: string | null;
+  loadingUntil: string | null;
+
+  unloadingAddress: string | null;
+  unloadingMapUrl: string | null;
+  unloadingContactName: string | null;
+  unloadingContactPhone: string | null;
+  unloadingUntil: string | null;
+
+  comment: string | null;
+
+  invoiceFileName: string;
+};
+
+type PunktSyncResponse = {
+  ok: boolean;
+
+  action?:
+    | 'created'
+    | 'updated';
+
+  shipment?: {
+    id: string;
+    requestNumber: string;
+    status: string;
+  };
+
+  error?: string;
+};
+
+function requireEnvironmentVariable(
+  name:
+    | 'PUNKT_API_URL'
+    | 'BRT_INTEGRATION_KEY'
+): string {
+  const value =
+    process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(
+      `${name} не задан в переменных окружения БРТ.`
+    );
+  }
+
+  return value;
+}
+
+function valueToNumber(
+  value: unknown
+): number | null {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return null;
+  }
+
+  const parsed =
+    Number(
+      String(value)
+        .replace(/\s/g, '')
+        .replace(',', '.')
+    );
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
+export async function syncTransportRequestToPunkt(
+  input: PunktShipmentInput
+): Promise<PunktSyncResponse> {
+  const baseUrl =
+    requireEnvironmentVariable(
+      'PUNKT_API_URL'
+    ).replace(
+      /\/+$/,
+      ''
+    );
+
+  const integrationKey =
+    requireEnvironmentVariable(
+      'BRT_INTEGRATION_KEY'
+    );
+
+  if (
+    !input.loadingAddress ||
+    !input.unloadingAddress
+  ) {
+    throw new Error(
+      'Для передачи заявки в ПУНКТ отсутствует адрес погрузки или выгрузки.'
+    );
+  }
+
+  const controller =
+    new AbortController();
+
+  const timeout =
+    setTimeout(
+      () =>
+        controller.abort(),
+      10_000
+    );
+
+  try {
+    const response =
+      await fetch(
+        `${baseUrl}/api/integrations/brt/shipments`,
+        {
+          method:
+            'POST',
+
+          headers: {
+            'content-type':
+              'application/json',
+
+            'x-brt-integration-key':
+              integrationKey,
+          },
+
+          body:
+            JSON.stringify({
+              sourceRequestId:
+                input.id,
+
+              requestNumber:
+                input.requestNumber,
+
+              createdAt:
+                input.createdAt.toISOString(),
+
+              managerEmail:
+                input.managerEmail,
+
+              customer:
+                input.customer,
+
+              loadingDate:
+                input.loadingDate
+                  ?.toISOString() ??
+                null,
+
+              desiredPickupTime:
+                input.desiredPickupTime,
+
+              preferredVehicleName:
+                input.preferredVehicleName,
+
+              totalWeight:
+                valueToNumber(
+                  input.totalWeight
+                ),
+
+              cargoLength:
+                valueToNumber(
+                  input.cargoLength
+                ),
+
+              needsStakes:
+                input.needsStakes,
+
+              logisticsFitCheck:
+                input.logisticsFitCheck
+                  ? 'yes'
+                  : 'no',
+
+              loadingAddress:
+                input.loadingAddress,
+
+              loadingMapUrl:
+                input.loadingMapUrl,
+
+              loadingContactName:
+                input.loadingContactName,
+
+              loadingContactPhone:
+                input.loadingContactPhone,
+
+              loadingUntil:
+                input.loadingUntil,
+
+              unloadingAddress:
+                input.unloadingAddress,
+
+              unloadingMapUrl:
+                input.unloadingMapUrl,
+
+              unloadingContactName:
+                input.unloadingContactName,
+
+              unloadingContactPhone:
+                input.unloadingContactPhone,
+
+              unloadingUntil:
+                input.unloadingUntil,
+
+              invoiceFileName:
+                input.invoiceFileName,
+
+              objectName:
+                input.unloadingAddress,
+
+              comment:
+                input.comment,
+            }),
+
+          signal:
+            controller.signal,
+        }
+      );
+
+    const responseText =
+      await response.text();
+
+    let result:
+      PunktSyncResponse;
+
+    try {
+      result =
+        JSON.parse(
+          responseText
+        ) as PunktSyncResponse;
+    } catch {
+      throw new Error(
+        `ПУНКТ вернул некорректный ответ. HTTP ${response.status}.`
+      );
+    }
+
+    if (
+      !response.ok ||
+      !result.ok
+    ) {
+      throw new Error(
+        `Ошибка ПУНКТ HTTP ${response.status}: ${
+          result.error ??
+          responseText
+        }`
+      );
+    }
+
+    return result;
+  } finally {
+    clearTimeout(
+      timeout
+    );
+  }
+}
