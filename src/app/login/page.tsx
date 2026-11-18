@@ -20,9 +20,7 @@ export default function LoginPage() {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           email: email.trim(),
@@ -31,7 +29,6 @@ export default function LoginPage() {
       });
 
       let payload: Record<string, unknown> = {};
-
       try {
         payload = await response.json();
       } catch {
@@ -50,7 +47,7 @@ export default function LoginPage() {
         return;
       }
 
-      window.location.href = "/";
+      window.location.assign("/");
     } catch {
       setError("Не удалось подключиться к серверу. Попробуйте ещё раз.");
     } finally {
@@ -59,12 +56,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className={styles.loginPage}>
-      <section className={styles.loginPanel} aria-label="Вход в BRT">
-        <div className={styles.panelGlow} aria-hidden="true" />
-
-        <div className={styles.content}>
-          <h1>Вход для менеджера</h1>
+    <main className={styles.page}>
+      <section className={styles.panel}>
+        <div className={styles.inner}>
+          <h1 className={styles.title}>Вход для менеджера</h1>
 
           <p className={styles.subtitle}>
             Войдите в аккаунт, чтобы пользоваться калькулятором доставки.
@@ -102,7 +97,7 @@ export default function LoginPage() {
             ) : null}
 
             <button
-              className={styles.loginButton}
+              className={styles.button}
               type="submit"
               disabled={loading}
             >

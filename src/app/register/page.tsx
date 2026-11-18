@@ -1,189 +1,115 @@
-'use client';
+"use client";
 
-import {
-  useState,
-} from 'react';
-
-import {
-  useRouter,
-} from 'next/navigation';
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+import styles from "./register.module.css";
 
 export default function RegisterPage() {
-  const router =
-    useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [
-    email,
-    setEmail,
-  ] = useState('');
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading) return;
 
-  const [
-    password,
-    setPassword,
-  ] = useState('');
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    error,
-    setError,
-  ] = useState('');
-
-  async function submit() {
+    setError("");
     setLoading(true);
-    setError('');
 
     try {
-      const response =
-        await fetch(
-          '/api/auth/register',
-          {
-            method:
-              'POST',
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
 
-            headers: {
-              'content-type':
-                'application/json',
-            },
-
-            body:
-              JSON.stringify({
-                email,
-                password,
-              }),
-          }
-        );
-
-      const data =
-        await response.json();
-
-      setLoading(false);
+      let payload: Record<string, unknown> = {};
+      try {
+        payload = await response.json();
+      } catch {
+        payload = {};
+      }
 
       if (!response.ok) {
-        setError(
-          data.error ||
-          'Не удалось зарегистрироваться'
-        );
+        const message =
+          typeof payload.error === "string"
+            ? payload.error
+            : typeof payload.message === "string"
+              ? payload.message
+              : "Не удалось зарегистрироваться.";
 
+        setError(message);
         return;
       }
 
-      router.push('/');
-      router.refresh();
-    } catch (
-      error: any
-    ) {
+      window.location.assign("/");
+    } catch {
+      setError("Не удалось подключиться к серверу. Попробуйте ещё раз.");
+    } finally {
       setLoading(false);
-
-      setError(
-        error?.message ||
-        'Ошибка регистрации'
-      );
     }
   }
 
   return (
-    <div
-      style={{
-        maxWidth:
-          460,
-        margin:
-          '60px auto',
-      }}
-    >
-      <div className="card">
-        <h1>
-          Регистрация менеджера
-        </h1>
+    <main className={styles.page}>
+      <section className={styles.panel}>
+        <div className={styles.inner}>
+          <h1 className={styles.title}>Регистрация менеджера</h1>
 
-        <p className="sub">
-          Создайте аккаунт,
-          чтобы рассчитывать
-          и сохранять доставки.
-        </p>
+          <p className={styles.subtitle}>
+            Создайте аккаунт, чтобы рассчитывать и сохранять доставки.
+          </p>
 
-        <div className="field">
-          <label>
-            Email
-          </label>
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <label className={styles.field}>
+              <span>Email</span>
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
 
-          <input
-            type="email"
-            value={
-              email
-            }
-            onChange={(
-              event
-            ) =>
-              setEmail(
-                event
-                  .target
-                  .value
-              )
-            }
-            placeholder="manager@company.ru"
-          />
+            <label className={styles.field}>
+              <span>Пароль</span>
+              <input
+                type="password"
+                name="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </label>
+
+            {error ? (
+              <div className={styles.error} role="alert">
+                {error}
+              </div>
+            ) : null}
+
+            <button
+              className={styles.button}
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Регистрируем..." : "Зарегистрироваться"}
+            </button>
+
+            <p className={styles.login}>
+              Уже есть аккаунт? <Link href="/login">Войти</Link>
+            </p>
+          </form>
         </div>
-
-        <div className="field">
-          <label>
-            Пароль
-          </label>
-
-          <input
-            type="password"
-            value={
-              password
-            }
-            onChange={(
-              event
-            ) =>
-              setPassword(
-                event
-                  .target
-                  .value
-              )
-            }
-            placeholder="Минимум 6 символов"
-          />
-        </div>
-
-        {error && (
-          <div className="warn">
-            {error}
-          </div>
-        )}
-
-        <button
-          className="btn"
-          disabled={
-            loading
-          }
-          onClick={
-            submit
-          }
-        >
-          {loading
-            ? 'Создаём аккаунт…'
-            : 'Зарегистрироваться'}
-        </button>
-
-        <div
-          style={{
-            marginTop:
-              16,
-          }}
-        >
-          Уже есть аккаунт?{' '}
-
-          <a href="/login">
-            Войти
-          </a>
-        </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
