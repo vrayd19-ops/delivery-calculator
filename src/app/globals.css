@@ -3809,3 +3809,223 @@ tbody tr:hover {
 }
 
 /* === /BRT LOGIN PIXEL MATCH 2026 === */
+
+
+/* === BRT LOGIN EXACT OVERLAY 2026 === */
+
+/*
+ * Финальная схема:
+ * изображение уже содержит весь неоновый блок входа.
+ * Реальная форма только накладывает функциональные поля/кнопку поверх него.
+ */
+
+/* Убираем реальную белую/серую карточку-обёртку формы */
+:is(div, section, article):has(> form.brt-login-form) {
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Текст реальной карточки не нужен — он уже нарисован на фоне */
+:is(div, section, article):has(> form.brt-login-form) > h1,
+:is(div, section, article):has(> form.brt-login-form) > h2,
+:is(div, section, article):has(> form.brt-login-form) > p {
+  display: none !important;
+}
+
+form.brt-login-form {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 50 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+form.brt-login-form h1,
+form.brt-login-form h2,
+form.brt-login-form > p,
+form.brt-login-form label {
+  position: fixed !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+/* EMAIL */
+form.brt-login-form input[type="email"],
+form.brt-login-form input[name="email"] {
+  position: fixed !important;
+  left: 62.45vw !important;
+  top: 33.05vh !important;
+  width: 25.15vw !important;
+  height: 5.65vh !important;
+  min-height: 44px !important;
+  max-height: 62px !important;
+  margin: 0 !important;
+  padding: 0 18px 0 58px !important;
+  pointer-events: auto !important;
+  color: #eef8ff !important;
+  caret-color: #61dcff !important;
+  background: rgba(8, 38, 62, 0.16) !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: clamp(14px, 1.05vw, 19px) !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+}
+
+/* PASSWORD */
+form.brt-login-form input[type="password"] {
+  position: fixed !important;
+  left: 62.45vw !important;
+  top: 40.60vh !important;
+  width: 25.15vw !important;
+  height: 5.65vh !important;
+  min-height: 44px !important;
+  max-height: 62px !important;
+  margin: 0 !important;
+  padding: 0 58px !important;
+  pointer-events: auto !important;
+  color: #eef8ff !important;
+  caret-color: #61dcff !important;
+  background: rgba(8, 38, 62, 0.16) !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: clamp(14px, 1.05vw, 19px) !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+}
+
+form.brt-login-form input::placeholder {
+  color: transparent !important;
+}
+
+form.brt-login-form input:focus {
+  background: rgba(14, 54, 84, 0.28) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(89, 211, 255, 0.16),
+    0 0 18px rgba(0, 187, 255, 0.08) !important;
+}
+
+/* Chrome autofill */
+form.brt-login-form input:-webkit-autofill,
+form.brt-login-form input:-webkit-autofill:hover,
+form.brt-login-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #eef8ff !important;
+  transition: background-color 9999s ease-out 0s !important;
+  box-shadow: 0 0 0 1000px rgba(8, 38, 62, 0.20) inset !important;
+}
+
+/* ВОЙТИ — прозрачная кликабельная зона поверх нарисованной кнопки */
+form.brt-login-form button[type="submit"] {
+  position: fixed !important;
+  left: 62.45vw !important;
+  top: 49.15vh !important;
+  width: 25.15vw !important;
+  height: 6.30vh !important;
+  min-height: 48px !important;
+  max-height: 68px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: auto !important;
+  color: transparent !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+  cursor: pointer !important;
+}
+
+form.brt-login-form button[type="submit"]:hover:not(:disabled) {
+  background: rgba(77, 221, 255, 0.07) !important;
+  box-shadow: 0 0 24px rgba(0, 184, 255, 0.12) !important;
+  transform: none !important;
+}
+
+/* Реальная ссылка регистрации поверх нарисованной */
+form.brt-login-form a,
+:is(div, section, article):has(> form.brt-login-form) > a {
+  position: fixed !important;
+  left: 71.2vw !important;
+  top: 58.20vh !important;
+  z-index: 60 !important;
+  width: 13.1vw !important;
+  height: 3.4vh !important;
+  min-height: 24px !important;
+  pointer-events: auto !important;
+  color: transparent !important;
+  background: transparent !important;
+  border: 0 !important;
+  text-decoration: none !important;
+  overflow: hidden !important;
+}
+
+/* Ошибка входа — показываем внутри панели, но не ломаем дизайн */
+form.brt-login-form [role="alert"] {
+  position: fixed !important;
+  left: 62.45vw !important;
+  top: 55.6vh !important;
+  z-index: 65 !important;
+  width: 25.15vw !important;
+  padding: 5px 10px !important;
+  pointer-events: none !important;
+  color: #ffd9d2 !important;
+  background: rgba(102, 18, 18, 0.72) !important;
+  border: 1px solid rgba(255, 131, 112, 0.28) !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  text-align: center !important;
+}
+
+/* На desktop-макете фон 16:9 — совпадение максимально точное */
+@media (max-aspect-ratio: 15/10) {
+  form.brt-login-form input[type="email"],
+  form.brt-login-form input[name="email"],
+  form.brt-login-form input[type="password"] {
+    left: 59vw !important;
+    width: 33vw !important;
+  }
+
+  form.brt-login-form button[type="submit"] {
+    left: 59vw !important;
+    width: 33vw !important;
+  }
+
+  form.brt-login-form a,
+  :is(div, section, article):has(> form.brt-login-form) > a {
+    left: 70vw !important;
+    width: 17vw !important;
+  }
+}
+
+/* === /BRT LOGIN EXACT OVERLAY 2026 === */
