@@ -3649,3 +3649,291 @@ form.brt-login-form-final [role="alert"] {
 }
 
 /* === /BRT LOGIN FRAME FINAL 2026 === */
+
+
+/* === BRT LOGIN FORCE FRAME 2026 === */
+
+/*
+ * Финальный принудительный фикс.
+ * Не зависит от className формы и от количества wrapper-ов.
+ * Находит форму входа по input[type=password].
+ */
+
+/* Все обертки вокруг login form делаем невидимыми */
+.auth-layout :where(div, section, article, main):has(form:has(input[type="password"])) {
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Скрываем дублирующие внешние заголовки, если они есть */
+.auth-layout :where(div, section, article):has(form:has(input[type="password"])) > h1,
+.auth-layout :where(div, section, article):has(form:has(input[type="password"])) > h2,
+.auth-layout :where(div, section, article):has(form:has(input[type="password"])) > p {
+  display: none !important;
+}
+
+/* Настоящую форму переносим непосредственно в правую рамку */
+.auth-layout form:has(input[type="password"]) {
+  position: fixed !important;
+  z-index: 999 !important;
+
+  left: 60.0vw !important;
+  top: 17.8vh !important;
+  width: 29.2vw !important;
+  height: 45.8vh !important;
+
+  min-width: 440px !important;
+  min-height: 425px !important;
+  max-width: 575px !important;
+  max-height: 545px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 13px !important;
+
+  margin: 0 !important;
+  padding: 38px 38px 30px !important;
+
+  color: #eff9ff !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 28px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transform: none !important;
+}
+
+/* Заголовок */
+.auth-layout form:has(input[type="password"]) h1,
+.auth-layout form:has(input[type="password"]) h2 {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 0 2px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  white-space: normal !important;
+
+  color: #ffffff !important;
+  font-size: clamp(28px, 2vw, 38px) !important;
+  line-height: 1.06 !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.035em !important;
+}
+
+/* Пояснение */
+.auth-layout form:has(input[type="password"]) > p {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 0 10px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  white-space: normal !important;
+
+  color: rgba(225,239,249,.82) !important;
+  font-size: clamp(13px, .95vw, 17px) !important;
+  line-height: 1.4 !important;
+}
+
+/* Визуально прячем labels */
+.auth-layout form:has(input[type="password"]) label {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+/* Поля */
+.auth-layout form:has(input[type="password"]) input[type="email"],
+.auth-layout form:has(input[type="password"]) input[name="email"],
+.auth-layout form:has(input[type="password"]) input[type="password"] {
+  position: static !important;
+  width: 100% !important;
+  height: 56px !important;
+  min-height: 56px !important;
+  max-height: 56px !important;
+  margin: 0 !important;
+  padding: 0 18px !important;
+
+  color: #f4fbff !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(24,59,87,.78),
+      rgba(17,48,75,.72)
+    ) !important;
+
+  border: 1px solid rgba(134,192,232,.48) !important;
+  border-radius: 13px !important;
+  outline: none !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04) !important;
+
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  caret-color: #65d8ff !important;
+}
+
+.auth-layout form:has(input[type="password"]) input::placeholder {
+  color: rgba(222,236,246,.62) !important;
+}
+
+.auth-layout form:has(input[type="password"]) input:focus {
+  border-color: rgba(75,206,255,.92) !important;
+  box-shadow:
+    0 0 0 3px rgba(0,174,255,.09),
+    0 0 20px rgba(0,174,255,.08) !important;
+}
+
+/* Chrome autofill */
+.auth-layout form:has(input[type="password"]) input:-webkit-autofill,
+.auth-layout form:has(input[type="password"]) input:-webkit-autofill:hover,
+.auth-layout form:has(input[type="password"]) input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f4fbff !important;
+  transition: background-color 9999s ease-out 0s !important;
+  box-shadow: 0 0 0 1000px #163b5b inset !important;
+}
+
+/* Кнопка */
+.auth-layout form:has(input[type="password"]) button[type="submit"] {
+  position: static !important;
+  width: 100% !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  margin: 8px 0 2px !important;
+  padding: 0 20px !important;
+
+  color: #fff !important;
+  background:
+    linear-gradient(
+      135deg,
+      #18b9ff 0%,
+      #0a7cf5 54%,
+      #10bdfb 100%
+    ) !important;
+
+  border: 1px solid rgba(89,222,255,.82) !important;
+  border-radius: 13px !important;
+
+  box-shadow:
+    0 10px 24px rgba(0,105,255,.22),
+    0 0 24px rgba(0,201,255,.14) !important;
+
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  transform: none !important;
+}
+
+.auth-layout form:has(input[type="password"]) button[type="submit"]:hover:not(:disabled) {
+  filter: brightness(1.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Регистрация */
+.auth-layout form:has(input[type="password"]) a {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  color: #74dcff !important;
+  background: transparent !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(116,220,255,.52) !important;
+  text-underline-offset: 3px !important;
+  overflow: visible !important;
+}
+
+/* Ошибка входа */
+.auth-layout form:has(input[type="password"]) [role="alert"] {
+  position: static !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  color: #ffd9d2 !important;
+  background: rgba(105,19,19,.50) !important;
+  border: 1px solid rgba(255,127,107,.32) !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}
+
+/* Убираем любые белые фоновые слои внутри области формы */
+.auth-layout form:has(input[type="password"]) :where(div,section,article) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Но поля и кнопка получают свои стили выше */
+
+/* На экранах типа 1680x900 – точное попадание в рамку */
+@media (min-width: 1400px) and (max-height: 1000px) {
+  .auth-layout form:has(input[type="password"]) {
+    left: 60.4vw !important;
+    top: 17.2vh !important;
+    width: 28.9vw !important;
+    height: 46.5vh !important;
+    padding: 34px 34px 27px !important;
+  }
+}
+
+/* Планшет */
+@media (max-width: 1200px) {
+  .auth-layout form:has(input[type="password"]) {
+    left: 57vw !important;
+    top: 18vh !important;
+    width: 35vw !important;
+    min-width: 390px !important;
+    padding: 30px !important;
+  }
+}
+
+/* Телефон */
+@media (max-width: 760px) {
+  .auth-layout form:has(input[type="password"]) {
+    left: 50% !important;
+    top: 50% !important;
+    width: min(92vw,430px) !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: translate(-50%,-50%) !important;
+
+    padding: 28px 22px !important;
+    background: rgba(5,30,52,.95) !important;
+    border: 1px solid rgba(71,211,255,.80) !important;
+    border-radius: 22px !important;
+    box-shadow:
+      0 20px 55px rgba(0,12,28,.45),
+      0 0 30px rgba(0,181,255,.16) !important;
+  }
+}
+
+/* === /BRT LOGIN FORCE FRAME 2026 === */
