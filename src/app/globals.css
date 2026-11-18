@@ -3371,26 +3371,27 @@ tbody tr:hover {
 /* === /BRT PERFORMANCE FIX 2026 === */
 
 
-/* === BRT FINAL LOGIN PAGE 2026 === */
 
-/*
- * Финальная страница входа BRT.
- * Используется утверждённый визуальный макет как фон.
- * Реальная форма авторизации остаётся поверх правой панели.
- */
+
+
+
+
+
+
+
+
+/* === BRT LOGIN FRAME FINAL 2026 === */
 
 .auth-layout {
   position: relative !important;
   min-height: 100vh !important;
   width: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
   overflow: hidden !important;
-  padding: clamp(22px, 4vw, 70px) clamp(28px, 8vw, 150px) !important;
+  padding: 0 !important;
+  margin: 0 !important;
   background:
     #061a2e
-    url('/brt-login-final.webp')
+    url('/brt-login-frame.webp')
     center center / cover
     no-repeat !important;
 }
@@ -3400,427 +3401,8 @@ tbody tr:hover {
   content: none !important;
 }
 
-/* Контейнер живой формы располагаем над нарисованной панелью */
-.auth-layout > * {
-  position: relative !important;
-  z-index: 2 !important;
-}
-
-.auth-layout > :last-child {
-  width: min(470px, 34vw) !important;
-  min-width: 360px !important;
-  margin: 0 !important;
-}
-
-/* Сама форма */
-.auth-layout form {
-  width: 100% !important;
-  min-height: 480px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  gap: 14px !important;
-  padding: 38px 42px !important;
-  color: #f5fbff !important;
-  background:
-    linear-gradient(
-      145deg,
-      rgba(9, 39, 66, .96),
-      rgba(5, 27, 48, .94)
-    ) !important;
-  border: 1px solid rgba(93, 206, 255, .78) !important;
-  border-radius: 24px !important;
-  box-shadow:
-    0 0 0 1px rgba(75, 183, 255, .18),
-    0 18px 55px rgba(0, 12, 28, .42),
-    0 0 32px rgba(0, 157, 255, .18) !important;
-  backdrop-filter: none !important;
-}
-
-/* Заголовок и пояснение */
-.auth-layout form h1,
-.auth-layout form h2 {
-  margin: 0 0 4px !important;
-  color: #fff !important;
-  font-size: clamp(28px, 2.15vw, 38px) !important;
-  line-height: 1.06 !important;
-  font-weight: 800 !important;
-  letter-spacing: -.035em !important;
-}
-
-.auth-layout form p {
-  color: rgba(225, 238, 248, .78) !important;
-  font-size: 14px !important;
-  line-height: 1.45 !important;
-}
-
-/* Labels */
-.auth-layout form label {
-  color: rgba(245,250,255,.92) !important;
-  font-size: 13px !important;
-  font-weight: 650 !important;
-}
-
-/* Поля */
-.auth-layout form input {
-  width: 100% !important;
-  min-height: 54px !important;
-  padding: 0 16px !important;
-  color: #fff !important;
-  background: rgba(27, 59, 85, .80) !important;
-  border: 1px solid rgba(125, 180, 220, .35) !important;
-  border-radius: 12px !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
-}
-
-.auth-layout form input::placeholder {
-  color: rgba(218,231,242,.62) !important;
-}
-
-.auth-layout form input:focus {
-  outline: none !important;
-  border-color: rgba(65, 188, 255, .95) !important;
-  box-shadow:
-    0 0 0 3px rgba(0, 158, 255, .12),
-    0 0 20px rgba(0, 158, 255, .11) !important;
-}
-
-/* Основная кнопка входа */
-.auth-layout form button[type="submit"] {
-  width: 100% !important;
-  min-height: 54px !important;
-  margin-top: 8px !important;
-  color: #fff !important;
-  background:
-    linear-gradient(
-      135deg,
-      #129bff 0%,
-      #087cff 55%,
-      #05a9ff 100%
-    ) !important;
-  border: 1px solid rgba(84, 211, 255, .68) !important;
-  border-radius: 12px !important;
-  font-size: 16px !important;
-  font-weight: 800 !important;
-  box-shadow:
-    0 8px 22px rgba(0, 107, 255, .28),
-    0 0 24px rgba(0, 177, 255, .16) !important;
-  cursor: pointer !important;
-  transition: transform .15s ease, filter .15s ease !important;
-}
-
-.auth-layout form button[type="submit"]:hover:not(:disabled) {
-  transform: translateY(-1px) !important;
-  filter: brightness(1.08) !important;
-}
-
-/* Ссылки внизу формы */
-.auth-layout form a {
-  color: #fff !important;
-  text-decoration-color: rgba(255,255,255,.55) !important;
-  text-underline-offset: 3px !important;
-}
-
-.auth-layout form a:hover {
-  color: #6ed2ff !important;
-}
-
-/* Ошибки */
-.auth-layout form [role="alert"] {
-  color: #ffb4a8 !important;
-  background: rgba(128, 29, 22, .25) !important;
-  border: 1px solid rgba(255, 125, 103, .30) !important;
-  border-radius: 9px !important;
-  padding: 9px 11px !important;
-}
-
-/* Адаптация */
-@media (max-width: 1100px) {
-  .auth-layout {
-    justify-content: center !important;
-    padding: 24px !important;
-    background-position: 43% center !important;
-  }
-
-  .auth-layout > :last-child {
-    width: min(460px, 92vw) !important;
-    min-width: 0 !important;
-    margin-left: auto !important;
-    margin-right: 4vw !important;
-  }
-}
-
-@media (max-width: 760px) {
-  .auth-layout {
-    justify-content: center !important;
-    background-position: 38% center !important;
-  }
-
-  .auth-layout > :last-child {
-    width: min(430px, 94vw) !important;
-    margin: 0 !important;
-  }
-
-  .auth-layout form {
-    min-height: 0 !important;
-    padding: 28px 22px !important;
-    background: rgba(5, 27, 48, .95) !important;
-  }
-}
-
-/* === /BRT FINAL LOGIN PAGE 2026 === */
-
-
-/* === BRT LOGIN PIXEL MATCH 2026 === */
-
-/*
- * Картинка является полным дизайном страницы входа.
- * Настоящие элементы формы встраиваются прямо в нарисованную панель.
- * Никакой отдельной карточки поверх изображения нет.
- */
-
-.auth-layout {
-  position: relative !important;
-  min-height: 100vh !important;
-  width: 100% !important;
-  display: block !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-  background:
-    #06192d
-    url('/brt-login-pixel-match.webp')
-    center center / cover
-    no-repeat !important;
-}
-
-.auth-layout::before,
-.auth-layout::after {
-  content: none !important;
-}
-
-/* Корневой контейнер формы */
-.auth-layout > * {
-  position: absolute !important;
-  z-index: 5 !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Сама форма — полностью прозрачная */
-.auth-layout form {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: block !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-}
-
-/* Убираем дублирующий визуальный текст формы */
-.auth-layout form h1,
-.auth-layout form h2,
-.auth-layout form > p,
-.auth-layout form label,
-.auth-layout form [role="alert"] {
-  position: absolute !important;
-}
-
-.auth-layout form h1,
-.auth-layout form h2,
-.auth-layout form > p,
-.auth-layout form label {
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
-  clip: rect(0 0 0 0) !important;
-  clip-path: inset(50%) !important;
-  white-space: nowrap !important;
-}
-
-/* Поле Email — точно внутри нарисованного поля */
-.auth-layout form input[type="email"],
-.auth-layout form input[name="email"] {
-  position: absolute !important;
-  left: 62.45% !important;
-  top: 32.15% !important;
-  width: 25.1% !important;
-  height: 5.85% !important;
-  margin: 0 !important;
-  padding: 0 3.2% 0 4.6% !important;
-  color: #eef8ff !important;
-  background: rgba(12, 44, 69, .18) !important;
-  border: 0 !important;
-  border-radius: 14px !important;
-  outline: none !important;
-  box-shadow: none !important;
-  font-size: clamp(14px, 1.08vw, 20px) !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-  caret-color: #56d9ff !important;
-}
-
-/* Поле пароль */
-.auth-layout form input[type="password"] {
-  position: absolute !important;
-  left: 62.45% !important;
-  top: 39.75% !important;
-  width: 25.1% !important;
-  height: 5.85% !important;
-  margin: 0 !important;
-  padding: 0 4.4% 0 4.6% !important;
-  color: #eef8ff !important;
-  background: rgba(12, 44, 69, .18) !important;
-  border: 0 !important;
-  border-radius: 14px !important;
-  outline: none !important;
-  box-shadow: none !important;
-  font-size: clamp(14px, 1.08vw, 20px) !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-  caret-color: #56d9ff !important;
-}
-
-.auth-layout form input::placeholder {
-  color: transparent !important;
-}
-
-.auth-layout form input:focus {
-  background: rgba(17, 58, 89, .34) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(95, 214, 255, .20),
-    0 0 16px rgba(0, 183, 255, .10) !important;
-}
-
-/* Кнопка Войти — совпадает с нарисованной кнопкой */
-.auth-layout form button[type="submit"] {
-  position: absolute !important;
-  left: 62.45% !important;
-  top: 48.25% !important;
-  width: 25.1% !important;
-  height: 6.35% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  color: #fff !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 14px !important;
-  box-shadow: none !important;
-  font-size: 0 !important;
-  cursor: pointer !important;
-}
-
-.auth-layout form button[type="submit"]::after {
-  content: "";
-}
-
-.auth-layout form button[type="submit"]:hover:not(:disabled) {
-  background: rgba(72, 213, 255, .08) !important;
-  box-shadow: 0 0 22px rgba(0, 191, 255, .12) !important;
-  transform: none !important;
-}
-
-/* Реальная ссылка регистрации поверх нарисованной */
-.auth-layout form a {
-  position: absolute !important;
-  left: 70.4% !important;
-  top: 57.2% !important;
-  width: 13.2% !important;
-  height: 3.5% !important;
-  color: transparent !important;
-  background: transparent !important;
-  text-decoration: none !important;
-  overflow: hidden !important;
-}
-
-.auth-layout form a:hover {
-  background: rgba(80, 210, 255, .05) !important;
-}
-
-/* Ошибка входа — единственный дополнительный текст, показываем аккуратно */
-.auth-layout form [role="alert"] {
-  left: 62.45% !important;
-  top: 54.5% !important;
-  width: 25.1% !important;
-  padding: 6px 10px !important;
-  color: #ffd3ca !important;
-  background: rgba(102, 17, 17, .72) !important;
-  border: 1px solid rgba(255, 135, 116, .35) !important;
-  border-radius: 8px !important;
-  font-size: 12px !important;
-  text-align: center !important;
-}
-
-/* На узких экранах сохраняем композицию, но даём форме usable-размер */
-@media (max-width: 900px) {
-  .auth-layout {
-    background-position: 57% center !important;
-  }
-
-  .auth-layout form input[type="email"],
-  .auth-layout form input[name="email"],
-  .auth-layout form input[type="password"] {
-    left: 57.5% !important;
-    width: 34% !important;
-  }
-
-  .auth-layout form button[type="submit"] {
-    left: 57.5% !important;
-    width: 34% !important;
-  }
-
-  .auth-layout form a {
-    left: 68% !important;
-    width: 18% !important;
-  }
-}
-
-@media (max-width: 620px) {
-  .auth-layout {
-    background-position: 70% center !important;
-  }
-
-  /* На телефоне используем встроенную панель справа почти на всю ширину */
-  .auth-layout form input[type="email"],
-  .auth-layout form input[name="email"],
-  .auth-layout form input[type="password"],
-  .auth-layout form button[type="submit"] {
-    left: 55% !important;
-    width: 40% !important;
-  }
-
-  .auth-layout form a {
-    left: 67% !important;
-    width: 23% !important;
-  }
-}
-
-/* === /BRT LOGIN PIXEL MATCH 2026 === */
-
-
-/* === BRT LOGIN EXACT OVERLAY 2026 === */
-
-/*
- * Финальная схема:
- * изображение уже содержит весь неоновый блок входа.
- * Реальная форма только накладывает функциональные поля/кнопку поверх него.
- */
-
-/* Убираем реальную белую/серую карточку-обёртку формы */
-:is(div, section, article):has(> form.brt-login-form) {
+/* Any old wrapper card around the login form becomes invisible. */
+:is(div,section,article):has(> form.brt-login-form-final) {
   position: static !important;
   inset: auto !important;
   width: auto !important;
@@ -3836,37 +3418,82 @@ tbody tr:hover {
   backdrop-filter: none !important;
 }
 
-/* Текст реальной карточки не нужен — он уже нарисован на фоне */
-:is(div, section, article):has(> form.brt-login-form) > h1,
-:is(div, section, article):has(> form.brt-login-form) > h2,
-:is(div, section, article):has(> form.brt-login-form) > p {
+/* Hide any duplicated text sitting outside the form. */
+:is(div,section,article):has(> form.brt-login-form-final) > h1,
+:is(div,section,article):has(> form.brt-login-form-final) > h2,
+:is(div,section,article):has(> form.brt-login-form-final) > p {
   display: none !important;
 }
 
-form.brt-login-form {
+form.brt-login-form-final {
   position: fixed !important;
-  inset: 0 !important;
-  z-index: 50 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
+  z-index: 20 !important;
+
+  /* Fits inside the empty neon frame on the approved 16:9 artwork */
+  left: 59.2vw !important;
+  top: 16.6vh !important;
+  width: 30.9vw !important;
+  height: 49.6vh !important;
+
+  min-width: 430px !important;
+  min-height: 470px !important;
+  max-width: 600px !important;
+  max-height: 600px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 13px !important;
+
   margin: 0 !important;
-  padding: 0 !important;
-  display: block !important;
+  padding: 44px 42px 34px !important;
+
+  color: #eef8ff !important;
   background: transparent !important;
   border: 0 !important;
-  border-radius: 0 !important;
+  border-radius: 34px !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
-  pointer-events: none !important;
 }
 
-form.brt-login-form h1,
-form.brt-login-form h2,
-form.brt-login-form > p,
-form.brt-login-form label {
-  position: fixed !important;
+/* Real heading is now the only heading inside the frame. */
+form.brt-login-form-final h1,
+form.brt-login-form-final h2 {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  clip: auto !important;
+  clip-path: none !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  margin: 0 0 2px !important;
+  color: #fff !important;
+  font-size: clamp(29px, 2.1vw, 41px) !important;
+  line-height: 1.05 !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.035em !important;
+}
+
+/* Intro text */
+form.brt-login-form-final > p {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  clip: auto !important;
+  clip-path: none !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  margin: 0 0 13px !important;
+  color: rgba(225, 239, 249, .82) !important;
+  font-size: clamp(13px, 1.0vw, 18px) !important;
+  line-height: 1.42 !important;
+}
+
+/* Labels should remain accessible but visually hidden because fields are self-explanatory. */
+form.brt-login-form-final label {
+  position: absolute !important;
   width: 1px !important;
   height: 1px !important;
   overflow: hidden !important;
@@ -3875,157 +3502,150 @@ form.brt-login-form label {
   white-space: nowrap !important;
 }
 
-/* EMAIL */
-form.brt-login-form input[type="email"],
-form.brt-login-form input[name="email"] {
-  position: fixed !important;
-  left: 62.45vw !important;
-  top: 33.05vh !important;
-  width: 25.15vw !important;
-  height: 5.65vh !important;
-  min-height: 44px !important;
-  max-height: 62px !important;
+/* Inputs match the neon frame design. */
+form.brt-login-form-final input[type="email"],
+form.brt-login-form-final input[name="email"],
+form.brt-login-form-final input[type="password"] {
+  width: 100% !important;
+  height: 56px !important;
+  min-height: 56px !important;
   margin: 0 !important;
-  padding: 0 18px 0 58px !important;
-  pointer-events: auto !important;
-  color: #eef8ff !important;
-  caret-color: #61dcff !important;
-  background: rgba(8, 38, 62, 0.16) !important;
-  border: 0 !important;
-  border-radius: 14px !important;
+  padding: 0 18px !important;
+
+  color: #f4fbff !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(24, 59, 87, .72),
+      rgba(18, 49, 76, .64)
+    ) !important;
+
+  border: 1px solid rgba(134, 192, 232, .44) !important;
+  border-radius: 13px !important;
+
   outline: none !important;
-  box-shadow: none !important;
-  font-size: clamp(14px, 1.05vw, 19px) !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-}
-
-/* PASSWORD */
-form.brt-login-form input[type="password"] {
-  position: fixed !important;
-  left: 62.45vw !important;
-  top: 40.60vh !important;
-  width: 25.15vw !important;
-  height: 5.65vh !important;
-  min-height: 44px !important;
-  max-height: 62px !important;
-  margin: 0 !important;
-  padding: 0 58px !important;
-  pointer-events: auto !important;
-  color: #eef8ff !important;
-  caret-color: #61dcff !important;
-  background: rgba(8, 38, 62, 0.16) !important;
-  border: 0 !important;
-  border-radius: 14px !important;
-  outline: none !important;
-  box-shadow: none !important;
-  font-size: clamp(14px, 1.05vw, 19px) !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-}
-
-form.brt-login-form input::placeholder {
-  color: transparent !important;
-}
-
-form.brt-login-form input:focus {
-  background: rgba(14, 54, 84, 0.28) !important;
   box-shadow:
-    inset 0 0 0 1px rgba(89, 211, 255, 0.16),
-    0 0 18px rgba(0, 187, 255, 0.08) !important;
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 0 0 1px rgba(63,161,220,.03) !important;
+
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  caret-color: #65d8ff !important;
 }
 
-/* Chrome autofill */
-form.brt-login-form input:-webkit-autofill,
-form.brt-login-form input:-webkit-autofill:hover,
-form.brt-login-form input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #eef8ff !important;
-  transition: background-color 9999s ease-out 0s !important;
-  box-shadow: 0 0 0 1000px rgba(8, 38, 62, 0.20) inset !important;
+form.brt-login-form-final input::placeholder {
+  color: rgba(220, 235, 246, .62) !important;
 }
 
-/* ВОЙТИ — прозрачная кликабельная зона поверх нарисованной кнопки */
-form.brt-login-form button[type="submit"] {
-  position: fixed !important;
-  left: 62.45vw !important;
-  top: 49.15vh !important;
-  width: 25.15vw !important;
-  height: 6.30vh !important;
-  min-height: 48px !important;
-  max-height: 68px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  pointer-events: auto !important;
-  color: transparent !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 14px !important;
-  box-shadow: none !important;
-  font-size: 0 !important;
+form.brt-login-form-final input:focus {
+  border-color: rgba(78, 204, 255, .92) !important;
+  box-shadow:
+    0 0 0 3px rgba(0, 174, 255, .10),
+    0 0 24px rgba(0, 174, 255, .10) !important;
+}
+
+/* Login button */
+form.brt-login-form-final button[type="submit"] {
+  width: 100% !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  margin: 9px 0 3px !important;
+  padding: 0 22px !important;
+
+  color: #fff !important;
+  background:
+    linear-gradient(
+      135deg,
+      #16b5ff 0%,
+      #0b7df5 55%,
+      #0ebcfb 100%
+    ) !important;
+
+  border: 1px solid rgba(86, 222, 255, .78) !important;
+  border-radius: 13px !important;
+
+  box-shadow:
+    0 10px 25px rgba(0, 105, 255, .22),
+    0 0 24px rgba(0, 202, 255, .15) !important;
+
+  font-size: 17px !important;
+  font-weight: 800 !important;
   cursor: pointer !important;
+  transition: transform .14s ease, filter .14s ease !important;
 }
 
-form.brt-login-form button[type="submit"]:hover:not(:disabled) {
-  background: rgba(77, 221, 255, 0.07) !important;
-  box-shadow: 0 0 24px rgba(0, 184, 255, 0.12) !important;
-  transform: none !important;
+form.brt-login-form-final button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.08) !important;
 }
 
-/* Реальная ссылка регистрации поверх нарисованной */
-form.brt-login-form a,
-:is(div, section, article):has(> form.brt-login-form) > a {
-  position: fixed !important;
-  left: 71.2vw !important;
-  top: 58.20vh !important;
-  z-index: 60 !important;
-  width: 13.1vw !important;
-  height: 3.4vh !important;
-  min-height: 24px !important;
-  pointer-events: auto !important;
-  color: transparent !important;
-  background: transparent !important;
-  border: 0 !important;
-  text-decoration: none !important;
-  overflow: hidden !important;
+/* Registration / footer text */
+form.brt-login-form-final a {
+  color: #70d9ff !important;
+  text-decoration-color: rgba(112, 217, 255, .60) !important;
+  text-underline-offset: 3px !important;
 }
 
-/* Ошибка входа — показываем внутри панели, но не ломаем дизайн */
-form.brt-login-form [role="alert"] {
-  position: fixed !important;
-  left: 62.45vw !important;
-  top: 55.6vh !important;
-  z-index: 65 !important;
-  width: 25.15vw !important;
-  padding: 5px 10px !important;
-  pointer-events: none !important;
+form.brt-login-form-final a:hover {
+  color: #fff !important;
+}
+
+/* Error state */
+form.brt-login-form-final [role="alert"] {
+  margin-top: 2px !important;
+  padding: 7px 10px !important;
   color: #ffd9d2 !important;
-  background: rgba(102, 18, 18, 0.72) !important;
-  border: 1px solid rgba(255, 131, 112, 0.28) !important;
-  border-radius: 8px !important;
-  font-size: 11px !important;
-  line-height: 1.25 !important;
-  text-align: center !important;
+  background: rgba(105, 19, 19, .50) !important;
+  border: 1px solid rgba(255, 127, 107, .32) !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
 }
 
-/* На desktop-макете фон 16:9 — совпадение максимально точное */
-@media (max-aspect-ratio: 15/10) {
-  form.brt-login-form input[type="email"],
-  form.brt-login-form input[name="email"],
-  form.brt-login-form input[type="password"] {
-    left: 59vw !important;
-    width: 33vw !important;
-  }
-
-  form.brt-login-form button[type="submit"] {
-    left: 59vw !important;
-    width: 33vw !important;
-  }
-
-  form.brt-login-form a,
-  :is(div, section, article):has(> form.brt-login-form) > a {
-    left: 70vw !important;
-    width: 17vw !important;
+/* On smaller desktop/tablet widths keep form inside frame area. */
+@media (max-width: 1200px) {
+  form.brt-login-form-final {
+    left: 57.5vw !important;
+    top: 18vh !important;
+    width: 34vw !important;
+    min-width: 390px !important;
+    padding: 36px 32px 28px !important;
   }
 }
 
-/* === /BRT LOGIN EXACT OVERLAY 2026 === */
+/* Mobile fallback: readable centered panel */
+@media (max-width: 760px) {
+  .auth-layout {
+    background-position: 45% center !important;
+  }
+
+  form.brt-login-form-final {
+    left: 50% !important;
+    top: 50% !important;
+    width: min(92vw, 430px) !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: translate(-50%, -50%) !important;
+    padding: 28px 22px !important;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(7, 38, 65, .96),
+        rgba(4, 24, 43, .96)
+      ) !important;
+
+    border: 1px solid rgba(71, 211, 255, .78) !important;
+    border-radius: 22px !important;
+    box-shadow:
+      0 0 0 1px rgba(84, 199, 255, .12),
+      0 20px 55px rgba(0, 12, 28, .45),
+      0 0 30px rgba(0, 181, 255, .16) !important;
+  }
+}
+
+/* === /BRT LOGIN FRAME FINAL 2026 === */
