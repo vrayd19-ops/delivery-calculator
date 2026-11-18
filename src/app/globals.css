@@ -3569,3 +3569,243 @@ tbody tr:hover {
 }
 
 /* === /BRT FINAL LOGIN PAGE 2026 === */
+
+
+/* === BRT LOGIN PIXEL MATCH 2026 === */
+
+/*
+ * Картинка является полным дизайном страницы входа.
+ * Настоящие элементы формы встраиваются прямо в нарисованную панель.
+ * Никакой отдельной карточки поверх изображения нет.
+ */
+
+.auth-layout {
+  position: relative !important;
+  min-height: 100vh !important;
+  width: 100% !important;
+  display: block !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  background:
+    #06192d
+    url('/brt-login-pixel-match.webp')
+    center center / cover
+    no-repeat !important;
+}
+
+.auth-layout::before,
+.auth-layout::after {
+  content: none !important;
+}
+
+/* Корневой контейнер формы */
+.auth-layout > * {
+  position: absolute !important;
+  z-index: 5 !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Сама форма — полностью прозрачная */
+.auth-layout form {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Убираем дублирующий визуальный текст формы */
+.auth-layout form h1,
+.auth-layout form h2,
+.auth-layout form > p,
+.auth-layout form label,
+.auth-layout form [role="alert"] {
+  position: absolute !important;
+}
+
+.auth-layout form h1,
+.auth-layout form h2,
+.auth-layout form > p,
+.auth-layout form label {
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+/* Поле Email — точно внутри нарисованного поля */
+.auth-layout form input[type="email"],
+.auth-layout form input[name="email"] {
+  position: absolute !important;
+  left: 62.45% !important;
+  top: 32.15% !important;
+  width: 25.1% !important;
+  height: 5.85% !important;
+  margin: 0 !important;
+  padding: 0 3.2% 0 4.6% !important;
+  color: #eef8ff !important;
+  background: rgba(12, 44, 69, .18) !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: clamp(14px, 1.08vw, 20px) !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  caret-color: #56d9ff !important;
+}
+
+/* Поле пароль */
+.auth-layout form input[type="password"] {
+  position: absolute !important;
+  left: 62.45% !important;
+  top: 39.75% !important;
+  width: 25.1% !important;
+  height: 5.85% !important;
+  margin: 0 !important;
+  padding: 0 4.4% 0 4.6% !important;
+  color: #eef8ff !important;
+  background: rgba(12, 44, 69, .18) !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: clamp(14px, 1.08vw, 20px) !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  caret-color: #56d9ff !important;
+}
+
+.auth-layout form input::placeholder {
+  color: transparent !important;
+}
+
+.auth-layout form input:focus {
+  background: rgba(17, 58, 89, .34) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(95, 214, 255, .20),
+    0 0 16px rgba(0, 183, 255, .10) !important;
+}
+
+/* Кнопка Войти — совпадает с нарисованной кнопкой */
+.auth-layout form button[type="submit"] {
+  position: absolute !important;
+  left: 62.45% !important;
+  top: 48.25% !important;
+  width: 25.1% !important;
+  height: 6.35% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #fff !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+  cursor: pointer !important;
+}
+
+.auth-layout form button[type="submit"]::after {
+  content: "";
+}
+
+.auth-layout form button[type="submit"]:hover:not(:disabled) {
+  background: rgba(72, 213, 255, .08) !important;
+  box-shadow: 0 0 22px rgba(0, 191, 255, .12) !important;
+  transform: none !important;
+}
+
+/* Реальная ссылка регистрации поверх нарисованной */
+.auth-layout form a {
+  position: absolute !important;
+  left: 70.4% !important;
+  top: 57.2% !important;
+  width: 13.2% !important;
+  height: 3.5% !important;
+  color: transparent !important;
+  background: transparent !important;
+  text-decoration: none !important;
+  overflow: hidden !important;
+}
+
+.auth-layout form a:hover {
+  background: rgba(80, 210, 255, .05) !important;
+}
+
+/* Ошибка входа — единственный дополнительный текст, показываем аккуратно */
+.auth-layout form [role="alert"] {
+  left: 62.45% !important;
+  top: 54.5% !important;
+  width: 25.1% !important;
+  padding: 6px 10px !important;
+  color: #ffd3ca !important;
+  background: rgba(102, 17, 17, .72) !important;
+  border: 1px solid rgba(255, 135, 116, .35) !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  text-align: center !important;
+}
+
+/* На узких экранах сохраняем композицию, но даём форме usable-размер */
+@media (max-width: 900px) {
+  .auth-layout {
+    background-position: 57% center !important;
+  }
+
+  .auth-layout form input[type="email"],
+  .auth-layout form input[name="email"],
+  .auth-layout form input[type="password"] {
+    left: 57.5% !important;
+    width: 34% !important;
+  }
+
+  .auth-layout form button[type="submit"] {
+    left: 57.5% !important;
+    width: 34% !important;
+  }
+
+  .auth-layout form a {
+    left: 68% !important;
+    width: 18% !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .auth-layout {
+    background-position: 70% center !important;
+  }
+
+  /* На телефоне используем встроенную панель справа почти на всю ширину */
+  .auth-layout form input[type="email"],
+  .auth-layout form input[name="email"],
+  .auth-layout form input[type="password"],
+  .auth-layout form button[type="submit"] {
+    left: 55% !important;
+    width: 40% !important;
+  }
+
+  .auth-layout form a {
+    left: 67% !important;
+    width: 23% !important;
+  }
+}
+
+/* === /BRT LOGIN PIXEL MATCH 2026 === */
