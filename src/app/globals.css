@@ -3369,3 +3369,203 @@ tbody tr:hover {
 }
 
 /* === /BRT PERFORMANCE FIX 2026 === */
+
+
+/* === BRT FINAL LOGIN PAGE 2026 === */
+
+/*
+ * Финальная страница входа BRT.
+ * Используется утверждённый визуальный макет как фон.
+ * Реальная форма авторизации остаётся поверх правой панели.
+ */
+
+.auth-layout {
+  position: relative !important;
+  min-height: 100vh !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  overflow: hidden !important;
+  padding: clamp(22px, 4vw, 70px) clamp(28px, 8vw, 150px) !important;
+  background:
+    #061a2e
+    url('/brt-login-final.webp')
+    center center / cover
+    no-repeat !important;
+}
+
+.auth-layout::before,
+.auth-layout::after {
+  content: none !important;
+}
+
+/* Контейнер живой формы располагаем над нарисованной панелью */
+.auth-layout > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.auth-layout > :last-child {
+  width: min(470px, 34vw) !important;
+  min-width: 360px !important;
+  margin: 0 !important;
+}
+
+/* Сама форма */
+.auth-layout form {
+  width: 100% !important;
+  min-height: 480px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 14px !important;
+  padding: 38px 42px !important;
+  color: #f5fbff !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(9, 39, 66, .96),
+      rgba(5, 27, 48, .94)
+    ) !important;
+  border: 1px solid rgba(93, 206, 255, .78) !important;
+  border-radius: 24px !important;
+  box-shadow:
+    0 0 0 1px rgba(75, 183, 255, .18),
+    0 18px 55px rgba(0, 12, 28, .42),
+    0 0 32px rgba(0, 157, 255, .18) !important;
+  backdrop-filter: none !important;
+}
+
+/* Заголовок и пояснение */
+.auth-layout form h1,
+.auth-layout form h2 {
+  margin: 0 0 4px !important;
+  color: #fff !important;
+  font-size: clamp(28px, 2.15vw, 38px) !important;
+  line-height: 1.06 !important;
+  font-weight: 800 !important;
+  letter-spacing: -.035em !important;
+}
+
+.auth-layout form p {
+  color: rgba(225, 238, 248, .78) !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+}
+
+/* Labels */
+.auth-layout form label {
+  color: rgba(245,250,255,.92) !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+}
+
+/* Поля */
+.auth-layout form input {
+  width: 100% !important;
+  min-height: 54px !important;
+  padding: 0 16px !important;
+  color: #fff !important;
+  background: rgba(27, 59, 85, .80) !important;
+  border: 1px solid rgba(125, 180, 220, .35) !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+.auth-layout form input::placeholder {
+  color: rgba(218,231,242,.62) !important;
+}
+
+.auth-layout form input:focus {
+  outline: none !important;
+  border-color: rgba(65, 188, 255, .95) !important;
+  box-shadow:
+    0 0 0 3px rgba(0, 158, 255, .12),
+    0 0 20px rgba(0, 158, 255, .11) !important;
+}
+
+/* Основная кнопка входа */
+.auth-layout form button[type="submit"] {
+  width: 100% !important;
+  min-height: 54px !important;
+  margin-top: 8px !important;
+  color: #fff !important;
+  background:
+    linear-gradient(
+      135deg,
+      #129bff 0%,
+      #087cff 55%,
+      #05a9ff 100%
+    ) !important;
+  border: 1px solid rgba(84, 211, 255, .68) !important;
+  border-radius: 12px !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  box-shadow:
+    0 8px 22px rgba(0, 107, 255, .28),
+    0 0 24px rgba(0, 177, 255, .16) !important;
+  cursor: pointer !important;
+  transition: transform .15s ease, filter .15s ease !important;
+}
+
+.auth-layout form button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.08) !important;
+}
+
+/* Ссылки внизу формы */
+.auth-layout form a {
+  color: #fff !important;
+  text-decoration-color: rgba(255,255,255,.55) !important;
+  text-underline-offset: 3px !important;
+}
+
+.auth-layout form a:hover {
+  color: #6ed2ff !important;
+}
+
+/* Ошибки */
+.auth-layout form [role="alert"] {
+  color: #ffb4a8 !important;
+  background: rgba(128, 29, 22, .25) !important;
+  border: 1px solid rgba(255, 125, 103, .30) !important;
+  border-radius: 9px !important;
+  padding: 9px 11px !important;
+}
+
+/* Адаптация */
+@media (max-width: 1100px) {
+  .auth-layout {
+    justify-content: center !important;
+    padding: 24px !important;
+    background-position: 43% center !important;
+  }
+
+  .auth-layout > :last-child {
+    width: min(460px, 92vw) !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: 4vw !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .auth-layout {
+    justify-content: center !important;
+    background-position: 38% center !important;
+  }
+
+  .auth-layout > :last-child {
+    width: min(430px, 94vw) !important;
+    margin: 0 !important;
+  }
+
+  .auth-layout form {
+    min-height: 0 !important;
+    padding: 28px 22px !important;
+    background: rgba(5, 27, 48, .95) !important;
+  }
+}
+
+/* === /BRT FINAL LOGIN PAGE 2026 === */
