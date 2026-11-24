@@ -5,6 +5,10 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
 
+# ==========================================
+# DEPENDENCIES
+# ==========================================
+
 FROM base AS deps
 
 COPY package.json package-lock.json ./
@@ -15,6 +19,10 @@ RUN npm config set fetch-retries 5 \
     && npm ci
 
 
+# ==========================================
+# BUILD
+# ==========================================
+
 FROM base AS builder
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -22,9 +30,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_YANDEX_MAPS_API_KEY
+
 ENV NEXT_PUBLIC_YANDEX_MAPS_API_KEY=$NEXT_PUBLIC_YANDEX_MAPS_API_KEY
 
 ARG DATABASE_URL=postgresql://postgres:postgres@postgres:5432/delivery_calculator
+
 ENV DATABASE_URL=$DATABASE_URL
 
 RUN npx prisma generate
@@ -32,23 +42,9 @@ RUN npx prisma generate
 RUN npm run build
 
 
-FROM base AS migrator
-
-COPY --from=deps /app/node_modules ./node_modules
-
-COPY package.json package-lock.json ./
-
-COPY prisma ./prisma
-
-COPY prisma.config.ts ./prisma.config.ts
-
-ARG DATABASE_URL=postgresql://postgres:postgres@postgres:5432/delivery_calculator
-ENV DATABASE_URL=$DATABASE_URL
-
-RUN npx prisma generate
-
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed"]
-
+# ==========================================
+# PRODUCTION RUNNER
+# ==========================================
 
 FROM node:22-alpine AS runner
 
@@ -59,55 +55,87 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+
 RUN addgroup --system --gid 1001 nodejs
 
 RUN adduser --system --uid 1001 nextjs
 
 
 # ==========================================
-# FULL RUNTIME DEPENDENCIES
+# NEXT.JS
+# ==========================================
+
+COPY --from=builder /app/public ./public
+
+COPY --from=builder \
+    --chown=nextjs:nodejs \
+    /app/.next/standalone ./
+
+COPY --from=builder \
+    --chown=nextjs:nodejs \
+    /app/.next/static ./.next/static
+
+
+# ==========================================
+# NODE MODULES
+# Нужны Prisma CLI + OCR
 # ==========================================
 
 COPY --from=deps \
     --chown=nextjs:nodejs \
-    /app/node_modules \
-    ./node_modules
+    /app/node_modules ./node_modules
 
 
 # ==========================================
-# NEXT.JS STANDALONE
+# PRISMA
+# Нужны для prisma migrate deploy
 # ==========================================
 
 COPY --from=builder \
     --chown=nextjs:nodejs \
-    /app/.next/standalone \
-    ./
+    /app/prisma ./prisma
 
 COPY --from=builder \
     --chown=nextjs:nodejs \
-    /app/.next/static \
-    ./.next/static
+    /app/prisma.config.ts ./prisma.config.ts
 
 COPY --from=builder \
     --chown=nextjs:nodejs \
-    /app/public \
-    ./public
+    /app/package.json ./package.json
+
+COPY --from=builder \
+    --chown=nextjs:nodejs \
+    /app/package-lock.json ./package-lock.json
 
 
 # ==========================================
-# PDF.JS WORKER
+# LOCAL OCR MODELS FOR TESSERACT
 # ==========================================
 
-RUN mkdir -p /app/.next/server/chunks
+RUN mkdir -p \
+    /app/node_modules/@tesseract.js-data/rus/4.0.0_best_int \
+    /app/node_modules/@tesseract.js-data/eng/4.0.0_best_int
+
 
 COPY --from=deps \
     --chown=nextjs:nodejs \
-    /app/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs \
-    /app/.next/server/chunks/pdf.worker.mjs
+    /app/node_modules/@tesseract.js-data/rus/4.0.0_best_int/rus.traineddata.gz \
+    /app/node_modules/@tesseract.js-data/rus/4.0.0_best_int/rus.traineddata.gz
+
+
+COPY --from=deps \
+    --chown=nextjs:nodejs \
+    /app/node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz \
+    /app/node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz
 
 
 USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+
+# ==========================================
+# DATABASE MIGRATIONS + NEXT.JS
+# ==========================================
+
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
