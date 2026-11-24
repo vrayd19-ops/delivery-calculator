@@ -222,7 +222,7 @@ function isOurCompanyInn(
  * не позволила определить роль ООО «ГГС».
  */
 const OCR_PDF_PAGES =
-  2;
+  1;
 
 
 /*
@@ -1088,78 +1088,188 @@ function russianMonthNumber(
 }
 
 
+// PUNKT_INVOICE_CLASSIFIER_HOTFIX_V4
 function extractInvoiceDate(
   text:
     string
 ): string {
-  const numericPatterns = [
-    /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,100}?\sот\s*(\d{1,2})[.\-/](\d{1,2})[.\-/](20\d{2})/iu,
-    /(?:№|N|#)[A-Za-zА-Яа-я0-9./_-]{1,40}\s+от\s+(\d{1,2})[.\-/](\d{1,2})[.\-/](20\d{2})/iu,
+  const currentYear =
+    new Date().getUTCFullYear();
+
+  function validDate(
+    dayValue: string,
+    monthValue: string,
+    yearValue: string
+  ): string {
+    const day =
+      Number(
+        dayValue
+      );
+
+    const month =
+      Number(
+        monthValue
+      );
+
+    let year =
+      Number(
+        yearValue
+      );
+
+    if (
+      yearValue.length ===
+      2
+    ) {
+      year =
+        2000 +
+        year;
+    }
+
+    if (
+      !Number.isInteger(day) ||
+      !Number.isInteger(month) ||
+      !Number.isInteger(year) ||
+      day < 1 ||
+      day > 31 ||
+      month < 1 ||
+      month > 12 ||
+      year < 2020 ||
+      year > currentYear + 1
+    ) {
+      return '';
+    }
+
+    const candidate =
+      new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          day
+        )
+      );
+
+    if (
+      candidate.getUTCFullYear() !==
+        year ||
+      candidate.getUTCMonth() !==
+        month - 1 ||
+      candidate.getUTCDate() !==
+        day
+    ) {
+      return '';
+    }
+
+    return [
+      String(year),
+      String(month)
+        .padStart(
+          2,
+          '0'
+        ),
+      String(day)
+        .padStart(
+          2,
+          '0'
+        ),
+    ].join('-');
+  }
+
+  const normalized =
+    normalizeDocumentText(
+      text
+    );
+
+  /*
+   * Сначала ищем дату именно в заголовке счёта.
+   * Допускаем OCR-разрывы, "от", № и год из 2 или 4 цифр.
+   */
+  const titlePatterns = [
+    /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,160}?(?:№|N|#)?\s*[A-Za-zА-Яа-я0-9./_-]{0,50}\s+от\s+(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|20\d{2})/iu,
+    /(?:№|N|#)\s*[A-Za-zА-Яа-я0-9./_-]{1,50}\s+от\s+(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|20\d{2})/iu,
   ];
 
-
   for (
-    const pattern of numericPatterns
+    const pattern of
+      titlePatterns
   ) {
     const match =
-      text.match(
+      normalized.match(
         pattern
       );
 
+    if (match) {
+      const result =
+        validDate(
+          match[1] ?? '',
+          match[2] ?? '',
+          match[3] ?? ''
+        );
 
-    if (
-      match
-    ) {
-      const day =
-        match[1]
-          .padStart(
-            2,
-            '0'
-          );
-
-      const month =
-        match[2]
-          .padStart(
-            2,
-            '0'
-          );
-
-
-      return `${match[3]}-${month}-${day}`;
+      if (result) {
+        return result;
+      }
     }
   }
 
-
+  /*
+   * Словесная дата:
+   * "05 ноября 2026 г."
+   */
   const wordMatch =
-    text.match(
-      /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,100}?\sот\s*(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s+(20\d{2})/iu
+    normalized.match(
+      /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,160}?\s+от\s+(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s+(20\d{2})/iu
     );
-
 
   if (
     wordMatch
   ) {
     const month =
       russianMonthNumber(
-        wordMatch[2]
+        wordMatch[2] ??
+        ''
       );
 
+    if (month) {
+      const result =
+        validDate(
+          wordMatch[1] ??
+            '',
+          month,
+          wordMatch[3] ??
+            ''
+        );
 
-    if (
-      month
-    ) {
-      const day =
-        wordMatch[1]
-          .padStart(
-            2,
-            '0'
-          );
-
-
-      return `${wordMatch[3]}-${month}-${day}`;
+      if (result) {
+        return result;
+      }
     }
   }
 
+  /*
+   * Осторожный fallback:
+   * берём только первые 500 символов документа,
+   * чтобы не схватить дату из банковских реквизитов.
+   */
+  const header =
+    normalized.slice(
+      0,
+      500
+    );
+
+  const fallback =
+    header.match(
+      /(?:от\s+)?(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|20\d{2})/u
+    );
+
+  if (
+    fallback
+  ) {
+    return validDate(
+      fallback[1] ?? '',
+      fallback[2] ?? '',
+      fallback[3] ?? ''
+    );
+  }
 
   return '';
 }
@@ -2155,14 +2265,16 @@ function buildClassificationResult(
       ? (
           detectedKind ===
             'SUPPLIER' &&
-          parsed.buyerInn ===
-            OUR_COMPANY_INN
+          isOurCompanyInn(
+            parsed.buyerInn
+          )
         )
       : (
           detectedKind ===
             'OUR' &&
-          parsed.supplierInn ===
-            SECOND_OUR_COMPANY_INN
+          isOurCompanyInn(
+            parsed.supplierInn
+          )
         );
 
 
@@ -2514,4 +2626,771 @@ export async function classifyTransportRequestInvoice(
         cacheKey
       );
   }
+}
+
+
+// PUNKT_AUTO_SUPPLIER_ITEMS_V1
+export type TransportRequestInvoicePosition = {
+  name: string;
+  quantity: string | null;
+  unit: string | null;
+  sourceRow: number | null;
+};
+
+function normalizePositionUnit(
+  value: string,
+): string | null {
+  const normalized =
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/\.$/, "");
+
+  const aliases:
+    Record<string, string> = {
+      "шт": "шт",
+      "штук": "шт",
+      "кг": "кг",
+      "килограмм": "кг",
+      "килограммов": "кг",
+      "т": "т",
+      "тн": "т",
+      "тонна": "т",
+      "тонн": "т",
+      "м": "м",
+      "м.п": "м",
+      "м.п.": "м",
+      "пог м": "м",
+      "пог. м": "м",
+      "м2": "м²",
+      "м²": "м²",
+      "кв м": "м²",
+      "кв. м": "м²",
+      "м3": "м³",
+      "м³": "м³",
+      "куб м": "м³",
+      "куб. м": "м³",
+      "л": "л",
+      "литр": "л",
+      "литров": "л",
+      "компл": "компл.",
+      "комплект": "компл.",
+      "комплектов": "компл.",
+      "упак": "упак.",
+      "упаковка": "упак.",
+      "упаковок": "упак.",
+      "рул": "рул.",
+      "рулон": "рул.",
+      "рулонов": "рул.",
+      "лист": "лист",
+      "листов": "лист",
+      "ед": "ед.",
+      "единица": "ед.",
+    };
+
+  return aliases[normalized] ?? null;
+}
+
+function cleanPositionQuantity(
+  value: string,
+): string | null {
+  const normalized =
+    value
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(",", ".");
+
+  if (
+    !/^\d+(?:\.\d{1,3})?$/.test(
+      normalized,
+    )
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function isPositionStopLine(
+  value: string,
+): boolean {
+  return /^(?:итого|всего\s+к\s+оплате|всего|сумма|в\s+том\s+числе\s+ндс|ндс|итого\s+с\s+ндс|всего\s+наименований)/iu
+    .test(
+      value.trim(),
+    );
+}
+
+function isPositionHeaderLine(
+  value: string,
+): boolean {
+  const normalized =
+    value
+      .trim()
+      .toLowerCase();
+
+  return (
+    /^(?:№|n|п\/п)$/u.test(
+      normalized,
+    ) ||
+    /(?:наименование|товар|услуг).*(?:кол|ед|цена|сумма)/iu.test(
+      normalized,
+    ) ||
+    /(?:кол-?во|количество|ед\.?s*изм|цена|сумма)/iu.test(
+      normalized,
+    )
+  );
+}
+
+function hasLetters(
+  value: string,
+): boolean {
+  return /[A-Za-zА-Яа-яЁё]/u.test(
+    value,
+  );
+}
+
+function looksLikeStandaloneRowNumber(
+  lines: string[],
+  index: number,
+  expectedRow: number | null,
+): boolean {
+  const match =
+    lines[index]?.match(
+      /^(\d{1,3})[.)]?$/,
+    );
+
+  if (!match) {
+    return false;
+  }
+
+  const row =
+    Number(
+      match[1],
+    );
+
+  if (
+    row < 1 ||
+    row > 500
+  ) {
+    return false;
+  }
+
+  if (
+    expectedRow !== null &&
+    row !== expectedRow
+  ) {
+    return false;
+  }
+
+  for (
+    let look = index + 1;
+    look <
+      Math.min(
+        lines.length,
+        index + 4,
+      );
+    look += 1
+  ) {
+    const next =
+      lines[look]?.trim() ??
+      "";
+
+    if (!next) {
+      continue;
+    }
+
+    if (
+      isPositionStopLine(
+        next,
+      )
+    ) {
+      return false;
+    }
+
+    return (
+      hasLetters(
+        next,
+      ) &&
+      !isPositionHeaderLine(
+        next,
+      ) &&
+      normalizePositionUnit(
+        next,
+      ) === null
+    );
+  }
+
+  return false;
+}
+
+function parsePositionBlock(
+  rowNumber: number | null,
+  parts: string[],
+): TransportRequestInvoicePosition | null {
+  const cleaned =
+    parts
+      .map(
+        (part) =>
+          part
+            .replace(/\s+/g, " ")
+            .trim(),
+      )
+      .filter(
+        (part) =>
+          part &&
+          !isPositionHeaderLine(
+            part,
+          ) &&
+          !isPositionStopLine(
+            part,
+          ),
+      );
+
+  if (
+    cleaned.length ===
+    0
+  ) {
+    return null;
+  }
+
+  const unitExactIndex =
+    cleaned.findIndex(
+      (part) =>
+        normalizePositionUnit(
+          part,
+        ) !== null,
+    );
+
+  if (
+    unitExactIndex >=
+    0
+  ) {
+    const unit =
+      normalizePositionUnit(
+        cleaned[
+          unitExactIndex
+        ],
+      );
+
+    let quantity:
+      string | null =
+        null;
+
+    for (
+      let index =
+        unitExactIndex + 1;
+      index <
+        cleaned.length;
+      index += 1
+    ) {
+      quantity =
+        cleanPositionQuantity(
+          cleaned[index],
+        );
+
+      if (quantity) {
+        break;
+      }
+    }
+
+    if (!quantity) {
+      for (
+        let index =
+          unitExactIndex - 1;
+        index >=
+          0;
+        index -= 1
+      ) {
+        quantity =
+          cleanPositionQuantity(
+            cleaned[index],
+          );
+
+        if (quantity) {
+          break;
+        }
+      }
+    }
+
+    const nameParts =
+      cleaned
+        .slice(
+          0,
+          unitExactIndex,
+        )
+        .filter(
+          (part) =>
+            !cleanPositionQuantity(
+              part,
+            ),
+        );
+
+    const name =
+      nameParts
+        .join(" ")
+        .replace(
+          /^\d{1,3}[.)]?\s*/,
+          "",
+        )
+        .trim();
+
+    if (
+      name.length >=
+        2 &&
+      hasLetters(
+        name,
+      )
+    ) {
+      return {
+        name:
+          name.slice(
+            0,
+            500,
+          ),
+        quantity,
+        unit,
+        sourceRow:
+          rowNumber,
+      };
+    }
+  }
+
+  const combined =
+    cleaned
+      .join(" ")
+      .replace(
+        /^\d{1,3}[.)]?\s*/,
+        "",
+      )
+      .trim();
+
+  const unitPattern =
+    "(?:шт\\.?|штук|кг|килограмм(?:ов)?|тн|т|тонн(?:а|ы)?|пог\\.?\\s*м|м\\.?п\\.?|м²|м2|кв\\.?\\s*м|м³|м3|куб\\.?\\s*м|л|литр(?:ов)?|компл\\.?|комплект(?:ов)?|упак\\.?|упаков(?:ка|ок)|рул\\.?|рулон(?:ов)?|лист(?:ов)?|ед\\.?)";
+
+  const quantityThenUnit =
+    combined.match(
+      new RegExp(
+        "^(.*?)(\\d+(?:[.,]\\d{1,3})?)\\s*(" +
+          unitPattern +
+          ")(?:\\s|$)",
+        "iu",
+      ),
+    );
+
+  if (
+    quantityThenUnit
+  ) {
+    const name =
+      (
+        quantityThenUnit[1] ??
+        ""
+      )
+        .trim()
+        .replace(
+          /[-–—,:;]+$/,
+          "",
+        )
+        .trim();
+
+    const quantity =
+      cleanPositionQuantity(
+        quantityThenUnit[2] ??
+          "",
+      );
+
+    const unit =
+      normalizePositionUnit(
+        quantityThenUnit[3] ??
+          "",
+      );
+
+    if (
+      name.length >=
+        2 &&
+      hasLetters(
+        name,
+      ) &&
+      quantity &&
+      unit
+    ) {
+      return {
+        name:
+          name.slice(
+            0,
+            500,
+          ),
+        quantity,
+        unit,
+        sourceRow:
+          rowNumber,
+      };
+    }
+  }
+
+  const unitThenQuantity =
+    combined.match(
+      new RegExp(
+        "^(.*?)(" +
+          unitPattern +
+          ")\\s+(\\d+(?:[.,]\\d{1,3})?)(?:\\s|$)",
+        "iu",
+      ),
+    );
+
+  if (
+    unitThenQuantity
+  ) {
+    const name =
+      (
+        unitThenQuantity[1] ??
+        ""
+      )
+        .trim()
+        .replace(
+          /[-–—,:;]+$/,
+          "",
+        )
+        .trim();
+
+    const unit =
+      normalizePositionUnit(
+        unitThenQuantity[2] ??
+          "",
+      );
+
+    const quantity =
+      cleanPositionQuantity(
+        unitThenQuantity[3] ??
+          "",
+      );
+
+    if (
+      name.length >=
+        2 &&
+      hasLetters(
+        name,
+      ) &&
+      quantity &&
+      unit
+    ) {
+      return {
+        name:
+          name.slice(
+            0,
+            500,
+          ),
+        quantity,
+        unit,
+        sourceRow:
+          rowNumber,
+      };
+    }
+  }
+
+  return null;
+}
+
+function parseTransportRequestInvoicePositionsText(
+  rawText: string,
+): TransportRequestInvoicePosition[] {
+  const normalized =
+    normalizeDocumentText(
+      rawText,
+    );
+
+  const lines =
+    normalized
+      .split("\n")
+      .map(
+        (line) =>
+          line
+            .replace(
+              /\s+/g,
+              " ",
+            )
+            .trim(),
+      )
+      .filter(Boolean);
+
+  const result:
+    TransportRequestInvoicePosition[] =
+      [];
+
+  let current:
+    {
+      rowNumber:
+        number | null;
+      parts:
+        string[];
+    } | null =
+      null;
+
+  let expectedRow:
+    number | null =
+      1;
+
+  let rowsStarted =
+    false;
+
+  function flush() {
+    if (!current) {
+      return;
+    }
+
+    const parsed =
+      parsePositionBlock(
+        current.rowNumber,
+        current.parts,
+      );
+
+    if (parsed) {
+      result.push(
+        parsed,
+      );
+    }
+
+    current =
+      null;
+  }
+
+  for (
+    let index = 0;
+    index <
+      lines.length;
+    index += 1
+  ) {
+    const line =
+      lines[index];
+
+    if (
+      isPositionStopLine(
+        line,
+      )
+    ) {
+      if (
+        rowsStarted
+      ) {
+        flush();
+        break;
+      }
+
+      continue;
+    }
+
+    const inlineRow =
+      line.match(
+        /^(\d{1,3})[.)]?\s+(.+)$/,
+      );
+
+    const standaloneRow =
+      looksLikeStandaloneRowNumber(
+        lines,
+        index,
+        expectedRow,
+      );
+
+    if (
+      inlineRow &&
+      hasLetters(
+        inlineRow[2] ??
+          "",
+      )
+    ) {
+      const rowNumber =
+        Number(
+          inlineRow[1],
+        );
+
+      if (
+        expectedRow ===
+          null ||
+        rowNumber ===
+          expectedRow ||
+        !rowsStarted
+      ) {
+        flush();
+
+        current = {
+          rowNumber,
+          parts: [
+            inlineRow[2] ??
+              "",
+          ],
+        };
+
+        rowsStarted =
+          true;
+
+        expectedRow =
+          rowNumber +
+          1;
+
+        continue;
+      }
+    }
+
+    if (
+      standaloneRow
+    ) {
+      const rowNumber =
+        Number(
+          line.replace(
+            /[.)]/g,
+            "",
+          ),
+        );
+
+      flush();
+
+      current = {
+        rowNumber,
+        parts:
+          [],
+      };
+
+      rowsStarted =
+        true;
+
+      expectedRow =
+        rowNumber +
+        1;
+
+      continue;
+    }
+
+    if (
+      current
+    ) {
+      current.parts.push(
+        line,
+      );
+    }
+  }
+
+  flush();
+
+  if (
+    result.length ===
+    0
+  ) {
+    for (
+      const line of
+        lines
+    ) {
+      if (
+        isPositionHeaderLine(
+          line,
+        ) ||
+        isPositionStopLine(
+          line,
+        )
+      ) {
+        continue;
+      }
+
+      const parsed =
+        parsePositionBlock(
+          null,
+          [
+            line,
+          ],
+        );
+
+      if (parsed) {
+        result.push(
+          parsed,
+        );
+      }
+    }
+  }
+
+  const seen =
+    new Set<string>();
+
+  return result
+    .filter(
+      (item) => {
+        const key =
+          [
+            item.sourceRow ??
+              "",
+            item.name
+              .toLowerCase()
+              .replace(
+                /\s+/g,
+                " ",
+              ),
+            item.quantity ??
+              "",
+            item.unit ??
+              "",
+          ].join("|");
+
+        if (
+          seen.has(
+            key,
+          )
+        ) {
+          return false;
+        }
+
+        seen.add(
+          key,
+        );
+
+        return true;
+      },
+    )
+    .slice(
+      0,
+      300,
+    );
+}
+
+export async function extractTransportRequestInvoicePositions(
+  input: {
+    buffer:
+      Buffer;
+    fileName:
+      string;
+    fileType:
+      string;
+  },
+): Promise<
+  TransportRequestInvoicePosition[]
+> {
+  const extracted =
+    await extractDocumentText({
+      buffer:
+        input.buffer,
+      fileName:
+        input.fileName,
+      fileType:
+        input.fileType,
+    });
+
+  const positions =
+    parseTransportRequestInvoicePositionsText(
+      extracted.text,
+    );
+
+  console.log(
+    "SUPPLIER INVOICE POSITIONS:",
+    {
+      fileName:
+        input.fileName,
+      recognitionMethod:
+        extracted.recognitionMethod,
+      count:
+        positions.length,
+      positions:
+        positions.slice(
+          0,
+          20,
+        ),
+    },
+  );
+
+  return positions;
 }
