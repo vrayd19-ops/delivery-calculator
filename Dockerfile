@@ -78,7 +78,7 @@ COPY --from=builder \
 
 # ==========================================
 # NODE MODULES
-# РќСѓР¶РЅС‹ Prisma CLI + OCR
+# Р СњРЎС“Р В¶Р Р…РЎвЂ№ Prisma CLI + OCR
 # ==========================================
 
 COPY --from=deps \
@@ -88,7 +88,7 @@ COPY --from=deps \
 
 # ==========================================
 # PRISMA
-# РќСѓР¶РЅС‹ РґР»СЏ prisma migrate deploy
+# Р СњРЎС“Р В¶Р Р…РЎвЂ№ Р Т‘Р В»РЎРЏ prisma migrate deploy
 # ==========================================
 
 COPY --from=builder \
@@ -138,4 +138,4 @@ EXPOSE 3000
 # DATABASE MIGRATIONS + NEXT.JS
 # ==========================================
 
-CMD ["sh", "-c", "npx prisma migrate resolve --rolled-back 20261117172000_add_transport_request_additional_points || true; npx prisma migrate deploy && exec node server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && exec node server.js"]
