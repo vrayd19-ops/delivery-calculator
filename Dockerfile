@@ -78,7 +78,7 @@ COPY --from=builder \
 
 # ==========================================
 # NODE MODULES
-# Р СњРЎС“Р В¶Р Р…РЎвЂ№ Prisma CLI + OCR
+# Р В РЎСљР РЋРЎвЂњР В Р’В¶Р В Р вЂ¦Р РЋРІР‚в„– Prisma CLI + OCR
 # ==========================================
 
 COPY --from=deps \
@@ -88,7 +88,7 @@ COPY --from=deps \
 
 # ==========================================
 # PRISMA
-# Р СњРЎС“Р В¶Р Р…РЎвЂ№ Р Т‘Р В»РЎРЏ prisma migrate deploy
+# Р В РЎСљР РЋРЎвЂњР В Р’В¶Р В Р вЂ¦Р РЋРІР‚в„– Р В РўвЂР В Р’В»Р РЋР РЏ prisma migrate deploy
 # ==========================================
 
 COPY --from=builder \
@@ -128,6 +128,9 @@ COPY --from=deps \
     /app/node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz \
     /app/node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz
 
+
+RUN mkdir -p /app/storage
+RUN chown -R nextjs:nodejs /app/storage
 
 USER nextjs
 
