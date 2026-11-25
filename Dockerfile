@@ -1,4 +1,4 @@
-﻿FROM node:22-alpine AS base
+FROM node:22-alpine AS base
 
 WORKDIR /app
 
@@ -138,4 +138,4 @@ EXPOSE 3000
 # DATABASE MIGRATIONS + NEXT.JS
 # ==========================================
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "npx prisma migrate resolve --rolled-back 20261117172000_add_transport_request_additional_points || true; npx prisma migrate deploy && exec node server.js"]
