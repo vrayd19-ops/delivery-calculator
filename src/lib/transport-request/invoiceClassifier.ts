@@ -1685,70 +1685,129 @@ async function withOcrLock<T>(
 }
 
 
-async function recognizeSingleImage(
-  image:
-    Buffer
-) {
-  return withOcrLock(
-    async () => {
-      const langPath =
-        await getLocalTessdataDirectory();
+let reusableInvoiceOcrWorkerPromise:
+  ReturnType<typeof createWorker> |
+  null =
+    null;
 
+let reusableInvoiceOcrProgressBucket =
+  -1;
 
-      console.log(
-        'INVOICE OCR: starting low-memory Russian worker'
-      );
+async function resetReusableInvoiceOcrWorker() {
+  const workerPromise =
+    reusableInvoiceOcrWorkerPromise;
 
+  reusableInvoiceOcrWorkerPromise =
+    null;
 
-      /*
-       * Только rus.
-       *
-       * Английская модель больше не загружается.
-       */
-      const worker =
-        await createWorker(
-          'rus',
-          OEM.LSTM_ONLY,
-          {
-            langPath,
+  reusableInvoiceOcrProgressBucket =
+    -1;
 
-            workerPath:
-              TESSERACT_WORKER_PATH,
+  if (
+    !workerPromise
+  ) {
+    return;
+  }
 
-            gzip:
-              true,
+  try {
+    const worker =
+      await workerPromise;
 
-            cacheMethod:
-              'none',
+    await worker
+      .terminate();
 
-            logger: (
-              message
-            ) => {
-              if (
-                message.status ===
-                'recognizing text'
-              ) {
-                console.log(
-                  'INVOICE OCR:',
-                  `${Math.round(
-                    message.progress *
-                      100
-                  )}%`
-                );
-              }
-            },
-          }
+    console.log(
+      'INVOICE OCR: reusable worker terminated after error'
+    );
+  } catch {
+    // Worker initialization could have failed before an instance existed.
+  }
+}
+
+async function getReusableInvoiceOcrWorker() {
+  if (
+    reusableInvoiceOcrWorkerPromise
+  ) {
+    console.log(
+      'INVOICE OCR: reusing Russian worker'
+    );
+
+    return reusableInvoiceOcrWorkerPromise;
+  }
+
+  reusableInvoiceOcrWorkerPromise =
+    (
+      async () => {
+        const langPath =
+          await getLocalTessdataDirectory();
+
+        console.log(
+          'INVOICE OCR: starting reusable Russian worker'
         );
 
+        const worker =
+          await createWorker(
+            'rus',
+            OEM.LSTM_ONLY,
+            {
+              langPath,
 
-      try {
+              workerPath:
+                TESSERACT_WORKER_PATH,
+
+              gzip:
+                true,
+
+              cacheMethod:
+                'none',
+
+              logger: (
+                message
+              ) => {
+                if (
+                  message.status !==
+                  'recognizing text'
+                ) {
+                  return;
+                }
+
+                const percent =
+                  Math.round(
+                    message.progress *
+                      100
+                  );
+
+                const bucket =
+                  percent >= 100
+                    ? 10
+                    : Math.floor(
+                        percent /
+                          10
+                      );
+
+                if (
+                  bucket ===
+                  reusableInvoiceOcrProgressBucket
+                ) {
+                  return;
+                }
+
+                reusableInvoiceOcrProgressBucket =
+                  bucket;
+
+                console.log(
+                  'INVOICE OCR:',
+                  `${Math.min(
+                    bucket * 10,
+                    100
+                  )}%`
+                );
+              },
+            }
+          );
+
         await worker
           .setParameters({
-            /*
-             * SPARSE_TEXT обычно легче для документов,
-             * где нам нужно найти отдельные строки и реквизиты,
-             * а не идеально восстановить всю верстку.
-             */
             tessedit_pageseg_mode:
               PSM.SPARSE_TEXT,
 
@@ -1756,14 +1815,39 @@ async function recognizeSingleImage(
               OCR_DPI,
           });
 
+        return worker;
+      }
+    )()
+      .catch(
+        (
+          error
+        ) => {
+          reusableInvoiceOcrWorkerPromise =
+            null;
 
-        /*
-         * Запрашиваем только text.
-         *
-         * TSV раньше создавал дополнительные данные
-         * с координатами каждого слова и увеличивал
-         * расход памяти.
-         */
+          reusableInvoiceOcrProgressBucket =
+            -1;
+
+          throw error;
+        }
+      );
+
+  return reusableInvoiceOcrWorkerPromise;
+}
+
+async function recognizeSingleImage(
+  image:
+    Buffer
+) {
+  return withOcrLock(
+    async () => {
+      const worker =
+        await getReusableInvoiceOcrWorker();
+
+      reusableInvoiceOcrProgressBucket =
+        -1;
+
+      try {
         const result =
           await worker
             .recognize(
@@ -1778,19 +1862,21 @@ async function recognizeSingleImage(
               }
             );
 
-
         return normalizeDocumentText(
           result.data.text ??
             ''
         );
-      } finally {
-        await worker
-          .terminate();
-
-
-        console.log(
-          'INVOICE OCR: worker terminated'
+      } catch (
+        error
+      ) {
+        console.error(
+          'INVOICE OCR: reusable worker failed, resetting',
+          error
         );
+
+        await resetReusableInvoiceOcrWorker();
+
+        throw error;
       }
     }
   );
