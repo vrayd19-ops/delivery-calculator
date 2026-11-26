@@ -1,3 +1,4 @@
+import { classifyInvoiceParties, matchInvoiceBlock, OUR_COMPANIES, type DetectedKind } from './invoiceParties';
 import {
   createHash,
 } from 'node:crypto';
@@ -35,16 +36,7 @@ export type TransportRequestInvoiceKind =
   | 'OUR';
 
 
-export type DetectedInvoiceKind =
-  | TransportRequestInvoiceKind
-  | 'UNKNOWN';
-
-
-type OurCompanyRole =
-  | 'SUPPLIER'
-  | 'BUYER'
-  | 'UNKNOWN';
-
+export type DetectedInvoiceKind = DetectedKind;
 
 type ParsedInvoiceData = {
   isInvoice:
@@ -84,6 +76,8 @@ type ExtractedDocument = {
 
 
 export type InvoiceClassificationResult = {
+  ourCompanyInn: string | null;
+  ourCompanyName: string | null;
   accepted:
     boolean;
 
@@ -147,79 +141,12 @@ type ClassifierGlobalState = {
 };
 
 
-const OUR_COMPANY_INN = '9204569514';
-
-const SECOND_OUR_COMPANY_INN = '9718232572';
-
-
-function containsOurCompanyInn(
-  value:
-    string
-): boolean {
-  const normalized =
-    normalizeInn(
-      value
-    );
-
-  return (
-    normalized.includes(
-      OUR_COMPANY_INN
-    ) ||
-    normalized.includes(
-      SECOND_OUR_COMPANY_INN
-    )
-  );
-}
-
-
-function getOurCompanyInn(
-  value:
-    string
-): string {
-  const normalized =
-    normalizeInn(
-      value
-    );
-
-  if (
-    normalized.includes(
-      SECOND_OUR_COMPANY_INN
-    )
-  ) {
-    return SECOND_OUR_COMPANY_INN;
-  }
-
-  if (
-    normalized.includes(
-      OUR_COMPANY_INN
-    )
-  ) {
-    return OUR_COMPANY_INN;
-  }
-
-  return '';
-}
-
-
-function isOurCompanyInn(
-  value:
-    string
-): boolean {
-  return (
-    value ===
-      OUR_COMPANY_INN ||
-    value ===
-      SECOND_OUR_COMPANY_INN
-  );
-}
-
-
 /*
  * Для определения сторон счёта обычно достаточно
  * первой страницы.
  *
  * Вторая используется только если первая страница
- * не позволила определить роль ООО «ГГС».
+ * не позволила определить роль компании группы.
  */
 const OCR_PDF_PAGES =
   1;
@@ -252,7 +179,7 @@ const CLASSIFICATION_CACHE_MAX_ENTRIES =
 
 
 const CLASSIFIER_VERSION =
-  'low-memory-v2-rus-text-only';
+  'invoice-parties-v3';
 
 
 const LOCAL_TESSDATA_DIRECTORY =
@@ -451,7 +378,7 @@ function extractInnFromText(
 ) {
   const matches =
     value.matchAll(
-      /ИНН\s*[:№]?\s*([0-9ОOоoІIil|Зз\s\-]{10,24})/gi
+      /ИНН(?:\s*\/\s*КПП)?\s*[:№]?\s*((?:[0-9ОOоoІIil|Зз][ \t-]*){9,11}[0-9ОOоoІIil|Зз])(?![0-9])/gi
     );
 
 
@@ -476,48 +403,6 @@ function extractInnFromText(
 
 
   return '';
-}
-
-
-function extractAllInns(
-  value:
-    string
-) {
-  const result =
-    new Set<string>();
-
-
-  const matches =
-    value.matchAll(
-      /ИНН\s*[:№]?\s*([0-9ОOоoІIil|Зз\s\-]{10,24})/gi
-    );
-
-
-  for (
-    const match of matches
-  ) {
-    const inn =
-      normalizeInn(
-        match[1] ??
-        ''
-      );
-
-
-    if (
-      isValidInnLength(
-        inn
-      )
-    ) {
-      result.add(
-        inn
-      );
-    }
-  }
-
-
-  return Array.from(
-    result
-  );
 }
 
 
@@ -564,12 +449,14 @@ function findFirstRegex(
 
 
 const SUPPLIER_LABEL =
-  /(?:Поставщик(?![А-Яа-яЁё])(?:\s*\(\s*Исполнитель\s*\))?|Исполнитель(?![А-Яа-яЁё]))\s*:?\s*/i;
+  /(?:Продавец(?![А-Яа-яЁё])|Поставщик(?![А-Яа-яЁё])(?:\s*\(\s*Исполнитель\s*\))?|Исполнитель(?![А-Яа-яЁё]))\s*:?\s*/i;
 
 
 const BUYER_LABEL =
   /(?:Покупатель(?![А-Яа-яЁё])(?:\s*\(\s*Заказчик\s*\))?|Заказчик(?![А-Яа-яЁё]))\s*:?\s*/i;
 
+
+const PAYER_LABEL = /Плательщик(?![А-Яа-яЁё])\s*:?\s*/i;
 
 function extractRoleSection(
   text:
@@ -593,12 +480,9 @@ function extractRoleSection(
       : SUPPLIER_LABEL;
 
 
-  const ownMatch =
-    findFirstRegex(
-      text,
-      ownPattern
-    );
-
+  // Prefer the invoice buyer over a separate payer in the bank details.
+  const ownMatch = findFirstRegex(text, ownPattern) ??
+    (role === 'BUYER' ? findFirstRegex(text, PAYER_LABEL) : null);
 
   if (
     !ownMatch
@@ -612,13 +496,8 @@ function extractRoleSection(
     ownMatch.length;
 
 
-  const oppositeMatch =
-    findFirstRegex(
-      text,
-      oppositePattern,
-      contentStart
-    );
-
+  const oppositeMatch = findFirstRegex(text, oppositePattern, contentStart) ??
+    (role === 'SUPPLIER' ? findFirstRegex(text, PAYER_LABEL, contentStart) : null);
 
   let contentEnd =
     Math.min(
@@ -671,41 +550,20 @@ function extractRoleSection(
 }
 
 
-function extractPartyName(
-  section:
-    string
-) {
-  if (
-    !section
-  ) {
-    return '';
-  }
-
-
-  const innIndex =
-    section.search(
-      /ИНН\s*[:№]?/i
-    );
-
-
-  const beforeInn =
-    innIndex >=
-      0
-      ? section.slice(
-          0,
-          innIndex
-        )
-      : section.slice(
-          0,
-          250
-        );
-
-
-  return cleanPartyName(
-    beforeInn
+function extractPartyInn(section: string) {
+  const inn = extractInnFromText(section);
+  if (inn) return inn;
+  // Some scans omit the ИНН label. Match a standalone identifier only within this party.
+  const matches = OUR_COMPANIES.filter(company =>
+    new RegExp('(?<![0-9])' + company.inn.split('').join('[ \\t-]*') + '(?![0-9])').test(section)
   );
+  return matches.length === 1 ? matches[0].inn : '';
 }
 
+function extractPartyName(section: string) {
+  const name = section.split(/ИНН|КПП|(?:Юридический\s+)?адрес\s*:|[,;]/i)[0].trim();
+  return cleanPartyName(name);
+}
 
 function looksLikeInvoice(
   text:
@@ -739,281 +597,6 @@ function looksLikeInvoice(
     )
   );
 }
-
-
-function sectionContainsOurInn(
-  section:
-    string
-): boolean {
-  return extractAllInns(
-    section
-  ).some(
-    (inn) =>
-      isOurCompanyInn(inn)
-  );
-}
-
-
-function detectOurCompanyRoleFromSections(
-  text:
-    string
-): OurCompanyRole {
-  const supplierSection =
-    extractRoleSection(
-      text,
-      'SUPPLIER'
-    );
-
-
-  const buyerSection =
-    extractRoleSection(
-      text,
-      'BUYER'
-    );
-
-
-  const supplierHasOurInn =
-    sectionContainsOurInn(
-      supplierSection
-    );
-
-
-  const buyerHasOurInn =
-    sectionContainsOurInn(
-      buyerSection
-    );
-
-
-  if (
-    buyerHasOurInn &&
-    !supplierHasOurInn
-  ) {
-    return 'BUYER';
-  }
-
-
-  if (
-    supplierHasOurInn &&
-    !buyerHasOurInn
-  ) {
-    return 'SUPPLIER';
-  }
-
-
-  return 'UNKNOWN';
-}
-
-
-function findOurInnIndex(
-  text:
-    string
-) {
-  const patterns = [
-    /9204569514/,
-    /9204[\s\-]*569[\s\-]*514/,
-    /9204[\s\-]*56[\s\-]*9514/,
-  ];
-
-
-  for (
-    const pattern of patterns
-  ) {
-    const match =
-      pattern.exec(
-        text
-      );
-
-
-    if (
-      match &&
-      match.index !==
-        undefined
-    ) {
-      return match.index;
-    }
-  }
-
-
-  return -1;
-}
-
-
-function detectOurCompanyRoleFromContext(
-  text:
-    string
-): OurCompanyRole {
-  const innIndex =
-    findOurInnIndex(
-      text
-    );
-
-
-  if (
-    innIndex <
-    0
-  ) {
-    return 'UNKNOWN';
-  }
-
-
-  const contextStart =
-    Math.max(
-      0,
-      innIndex -
-        700
-    );
-
-
-  const contextEnd =
-    Math.min(
-      text.length,
-      innIndex +
-        700
-    );
-
-
-  const context =
-    text.slice(
-      contextStart,
-      contextEnd
-    );
-
-
-  const relativeInnIndex =
-    innIndex -
-    contextStart;
-
-
-  const beforeInn =
-    context
-      .slice(
-        0,
-        relativeInnIndex
-      )
-      .toLowerCase();
-
-
-  const supplierWords = [
-    'поставщик',
-    'исполнитель',
-  ];
-
-
-  const buyerWords = [
-    'покупатель',
-    'заказчик',
-  ];
-
-
-  let supplierDistance =
-    Number.POSITIVE_INFINITY;
-
-
-  let buyerDistance =
-    Number.POSITIVE_INFINITY;
-
-
-  for (
-    const word of supplierWords
-  ) {
-    const index =
-      beforeInn
-        .lastIndexOf(
-          word
-        );
-
-
-    if (
-      index >=
-      0
-    ) {
-      supplierDistance =
-        Math.min(
-          supplierDistance,
-          beforeInn.length -
-            index
-        );
-    }
-  }
-
-
-  for (
-    const word of buyerWords
-  ) {
-    const index =
-      beforeInn
-        .lastIndexOf(
-          word
-        );
-
-
-    if (
-      index >=
-      0
-    ) {
-      buyerDistance =
-        Math.min(
-          buyerDistance,
-          beforeInn.length -
-            index
-        );
-    }
-  }
-
-
-  if (
-    buyerDistance <
-      supplierDistance &&
-    buyerDistance <=
-      500
-  ) {
-    return 'BUYER';
-  }
-
-
-  if (
-    supplierDistance <
-      buyerDistance &&
-    supplierDistance <=
-      500
-  ) {
-    return 'SUPPLIER';
-  }
-
-
-  return 'UNKNOWN';
-}
-
-
-function detectOurCompanyRole(
-  rawText:
-    string
-): OurCompanyRole {
-  const text =
-    normalizeDocumentText(
-      rawText
-    );
-
-
-  const sectionRole =
-    detectOurCompanyRoleFromSections(
-      text
-    );
-
-
-  if (
-    sectionRole !==
-    'UNKNOWN'
-  ) {
-    return sectionRole;
-  }
-
-
-  return detectOurCompanyRoleFromContext(
-    text
-  );
-}
-
 
 
 function extractInvoiceNumber(
@@ -1184,8 +767,8 @@ function extractInvoiceDate(
    * Допускаем OCR-разрывы, "от", № и год из 2 или 4 цифр.
    */
   const titlePatterns = [
-    /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,160}?(?:№|N|#)?\s*[A-Za-zА-Яа-я0-9./_-]{0,50}\s+от\s+(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|20\d{2})/iu,
-    /(?:№|N|#)\s*[A-Za-zА-Яа-я0-9./_-]{1,50}\s+от\s+(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|20\d{2})/iu,
+    /сч[её]т(?:\s+на\s+оплату)?[\s\S]{0,160}?(?:№|N|#)?\s*[A-Za-zА-Яа-я0-9./_-]{0,50}\s+от\s+(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2}|\d{2})(?!\d)/iu,
+    /(?:№|N|#)\s*[A-Za-zА-Яа-я0-9./_-]{1,50}\s+от\s+(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2}|\d{2})(?!\d)/iu,
   ];
 
   for (
@@ -1258,7 +841,7 @@ function extractInvoiceDate(
 
   const fallback =
     header.match(
-      /(?:от\s+)?(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|20\d{2})/u
+      /(?:от\s+)?(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2}|\d{2})(?!\d)/u
     );
 
   if (
@@ -1399,79 +982,8 @@ function parseInvoiceText(
     );
 
 
-  let supplierInn =
-    extractInnFromText(
-      supplierSection
-    );
-
-
-  let buyerInn =
-    extractInnFromText(
-      buyerSection
-    );
-
-
-  const allInns =
-    extractAllInns(
-      text
-    );
-
-
-  const otherInn =
-    allInns.find(
-      (
-        inn
-      ) =>
-        !isOurCompanyInn(inn)
-    ) ??
-    '';
-
-
-  const ourCompanyRole =
-    detectOurCompanyRole(
-      text
-    );
-
-
-  if (
-    ourCompanyRole ===
-      'BUYER'
-  ) {
-    buyerInn =
-      getOurCompanyInn(
-        text
-      ) ||
-      OUR_COMPANY_INN;
-
-
-    if (
-      otherInn
-    ) {
-      supplierInn =
-        otherInn;
-    }
-  }
-
-
-  if (
-    ourCompanyRole ===
-      'SUPPLIER'
-  ) {
-    supplierInn =
-      getOurCompanyInn(
-        text
-      ) ||
-      OUR_COMPANY_INN;
-
-
-    if (
-      otherInn
-    ) {
-      buyerInn =
-        otherInn;
-    }
-  }
-
+  const supplierInn = extractPartyInn(supplierSection);
+  const buyerInn = extractPartyInn(buyerSection);
 
   return {
     isInvoice:
@@ -1511,103 +1023,12 @@ function parseInvoiceText(
 }
 
 
-function detectInvoiceKind(
-  data:
-    ParsedInvoiceData,
-
-  rawText:
-    string
-): DetectedInvoiceKind {
-  const ourCompanyRole =
-    detectOurCompanyRole(
-      rawText
-    );
-
-
-  /*
-   * Если роль ООО «ГГС» определена однозначно,
-   * этого достаточно для классификации.
-   *
-   * OCR может плохо прочитать слово «счёт»,
-   * но хорошо распознать Покупателя / Поставщика и ИНН.
-   */
-  if (
-    ourCompanyRole ===
-      'BUYER'
-  ) {
-    return 'SUPPLIER';
-  }
-
-
-  if (
-    ourCompanyRole ===
-      'SUPPLIER'
-  ) {
-    return 'OUR';
-  }
-
-
-  if (
-    !data.isInvoice
-  ) {
-    return 'UNKNOWN';
-  }
-
-
-  return 'UNKNOWN';
+function invoiceParties(data: Pick<ParsedInvoiceData, 'supplierInn' | 'supplierName' | 'buyerInn' | 'buyerName'>) {
+  return [
+    { inn: data.supplierInn, name: data.supplierName },
+    { inn: data.buyerInn, name: data.buyerName },
+  ] as const;
 }
-
-
-function buildMismatchMessage(
-  expectedKind:
-    TransportRequestInvoiceKind,
-
-  detectedKind:
-    DetectedInvoiceKind
-) {
-  if (
-    expectedKind ===
-      'OUR' &&
-    detectedKind ===
-      'SUPPLIER'
-  ) {
-    return (
-      'Это закупочный счёт на ООО «ГГС». ' +
-      'Загрузите его в блок «Счета от поставщика».'
-    );
-  }
-
-
-  if (
-    expectedKind ===
-      'SUPPLIER' &&
-    detectedKind ===
-      'OUR'
-  ) {
-    return (
-      'Это наш счёт от ООО «ЛСТ». ' +
-      'Загрузите его в блок «Наши счета».'
-    );
-  }
-
-
-  if (
-    detectedKind ===
-      'UNKNOWN'
-  ) {
-    return (
-      'Не удалось определить нужную организацию в счёте. ' +
-      'Для закупки покупателем должно быть ООО «ГГС» (ИНН 9204569514), ' +
-      'для нашего счёта поставщиком должно быть ООО «ЛСТ» (ИНН 9718232572).'
-    );
-  }
-
-
-  return (
-    'Документ не соответствует выбранной категории счёта.'
-  );
-}
-
 
 async function prepareLocalTessdata() {
   await mkdir(
@@ -1893,12 +1314,7 @@ function inspectDocument(
     );
 
 
-  const detectedKind =
-    detectInvoiceKind(
-      parsed,
-      document.text
-    );
-
+  const { detectedKind } = classifyInvoiceParties(...invoiceParties(parsed));
 
   return {
     parsed,
@@ -2181,7 +1597,7 @@ async function extractPdfText(
 
     /*
      * Если уже после первой страницы понятно,
-     * где находится ООО «ГГС», вторую страницу
+     * какова роль компании группы, вторую страницу
      * не рендерим и не распознаём.
      */
     if (
@@ -2265,202 +1681,13 @@ async function extractDocumentText(
 }
 
 
-function buildClassificationResult(
-  input: {
-    expectedKind:
-      TransportRequestInvoiceKind;
-
-    extracted:
-      ExtractedDocument;
-
-    fileName:
-      string;
-  }
-): InvoiceClassificationResult {
-  if (
-    !input.extracted.text
-      .trim()
-  ) {
-    return {
-      accepted:
-        false,
-
-      detectedKind:
-        'UNKNOWN',
-
-      supplierName:
-        '',
-
-      supplierInn:
-        '',
-
-      buyerName:
-        '',
-
-      buyerInn:
-        '',
-
-      invoiceNumber:
-        '',
-
-      invoiceDate:
-        '',
-
-      invoiceAmount:
-        '',
-
-      recognitionMethod:
-        input.extracted
-          .recognitionMethod,
-
-      message:
-        'Не удалось прочитать текст счёта. Загрузите более чёткий PDF или изображение.',
-    };
-  }
-
-
-  const amountDebugLines =
-    input.extracted.text
-      .split(/\r?\n/)
-      .filter(
-        (line) =>
-          /(итог|всего|сумм|оплат|ндс|руб)/iu.test(line)
-      );
-
-  console.log(
-    'INVOICE AMOUNT OCR LINES:',
-    amountDebugLines
-  );
-
-  const parsed =
-    parseInvoiceText(
-      input.extracted.text
-    );
-
-
-  const detectedKind =
-    detectInvoiceKind(
-      parsed,
-      input.extracted.text
-    );
-
-
-  const accepted =
-    input.expectedKind ===
-      'SUPPLIER'
-      ? (
-          detectedKind ===
-            'SUPPLIER' &&
-          isOurCompanyInn(
-            parsed.buyerInn
-          )
-        )
-      : (
-          detectedKind ===
-            'OUR' &&
-          isOurCompanyInn(
-            parsed.supplierInn
-          )
-        );
-
-
-  const ourCompanyRole =
-    detectOurCompanyRole(
-      input.extracted.text
-    );
-
-
-  console.log(
-    'TRANSPORT REQUEST INVOICE CLASSIFICATION:',
-    {
-      fileName:
-        input.fileName,
-
-      expectedKind:
-        input.expectedKind,
-
-      detectedKind,
-
-      recognitionMethod:
-        input.extracted
-          .recognitionMethod,
-
-      ourCompanyInns:
-        [
-          OUR_COMPANY_INN,
-          SECOND_OUR_COMPANY_INN,
-        ],
-
-      ourCompanyRole,
-
-      supplierName:
-        parsed.supplierName,
-
-      supplierInn:
-        parsed.supplierInn,
-
-      buyerName:
-        parsed.buyerName,
-
-      buyerInn:
-        parsed.buyerInn,
-
-      invoiceNumber:
-        parsed.invoiceNumber,
-
-      invoiceDate:
-        parsed.invoiceDate,
-
-      invoiceAmount:
-        parsed.invoiceAmount,
-
-      textLength:
-        input.extracted
-          .text.length,
-    }
-  );
-
-
-  return {
-    accepted,
-
-    detectedKind,
-
-    supplierName:
-      parsed.supplierName,
-
-    supplierInn:
-      parsed.supplierInn,
-
-    buyerName:
-      parsed.buyerName,
-
-    buyerInn:
-      parsed.buyerInn,
-
-      invoiceNumber:
-        parsed.invoiceNumber,
-
-      invoiceDate:
-        parsed.invoiceDate,
-
-      invoiceAmount:
-        parsed.invoiceAmount,
-
-    recognitionMethod:
-      input.extracted
-        .recognitionMethod,
-
-    message:
-      accepted
-        ? 'Счёт соответствует выбранной категории.'
-        : buildMismatchMessage(
-            input.expectedKind,
-            detectedKind
-          ),
-  };
+export function classifyInvoiceText(text: string, expectedKind: TransportRequestInvoiceKind,
+  recognitionMethod: ExtractedDocument['recognitionMethod'], manualKind?: TransportRequestInvoiceKind): InvoiceClassificationResult {
+  const parsed = parseInvoiceText(text);
+  const decision = matchInvoiceBlock(...invoiceParties(parsed), expectedKind, manualKind);
+  return { ...parsed, ...decision, recognitionMethod,
+    message: text.trim() ? decision.message : 'Не удалось прочитать текст счёта. Загрузите более чёткий PDF или изображение.' };
 }
-
 
 function cleanupClassificationCache() {
   const now =
@@ -2520,55 +1747,20 @@ function cleanupClassificationCache() {
 }
 
 
-async function classifyBuffer(
-  input: {
-    buffer:
-      Buffer;
+type ClassificationInput = { file: File; expectedKind: TransportRequestInvoiceKind; manualKind?: TransportRequestInvoiceKind };
 
-    fileName:
-      string;
-
-    fileType:
-      string;
-
-    expectedKind:
-      TransportRequestInvoiceKind;
-  }
-): Promise<InvoiceClassificationResult> {
-  const extracted =
-    await extractDocumentText({
-      buffer:
-        input.buffer,
-
-      fileName:
-        input.fileName,
-
-      fileType:
-        input.fileType,
-    });
-
-
-  return buildClassificationResult({
-    expectedKind:
-      input.expectedKind,
-
-    extracted,
-
-    fileName:
-      input.fileName,
-  });
+async function classifyBuffer(input: { buffer: Buffer; fileName: string; fileType: string; expectedKind: TransportRequestInvoiceKind }) {
+  const document = await extractDocumentText(input);
+  return classifyInvoiceText(document.text, input.expectedKind, document.recognitionMethod);
 }
 
+export async function classifyTransportRequestInvoice(input: ClassificationInput): Promise<InvoiceClassificationResult> {
+  const result = await cachedClassification(input);
+  if (result.detectedKind !== 'INTERNAL' || input.manualKind !== input.expectedKind) return result;
+  return { ...result, ...matchInvoiceBlock(...invoiceParties(result), input.expectedKind, input.manualKind) };
+}
 
-export async function classifyTransportRequestInvoice(
-  input: {
-    file:
-      File;
-
-    expectedKind:
-      TransportRequestInvoiceKind;
-  }
-): Promise<InvoiceClassificationResult> {
+async function cachedClassification(input: ClassificationInput): Promise<InvoiceClassificationResult> {
   /*
    * Читаем файл один раз.
    */

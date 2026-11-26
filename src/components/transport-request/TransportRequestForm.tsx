@@ -31,6 +31,26 @@ import styles
   from './TransportRequest.module.css';
 
 
+type InvoiceBlock = 'SUPPLIER' | 'OUR';
+type InvoiceFiles = Record<InvoiceBlock, File[]>;
+
+function sameFile(a: File, b: File) {
+  return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+}
+
+function moveInvoice(files: InvoiceFiles, file: File, from: InvoiceBlock, to: InvoiceBlock): InvoiceFiles {
+  if (from === to || !files[from].includes(file) || files[to].length >= 10 ||
+      files[to].some(other => sameFile(other, file))) return files;
+  return { ...files, [from]: files[from].filter(item => item !== file), [to]: [...files[to], file] };
+}
+
+type InvoicePreview = {
+  company?: string;
+  detectedKind?: InvoiceBlock | 'INTERNAL' | 'UNKNOWN';
+  message: string;
+  accepted: boolean;
+};
+
 type VehicleOption = {
   id:
     string;
@@ -382,23 +402,62 @@ export default function TransportRequestForm({
   const [additionalLoadingPoints, setAdditionalLoadingPoints] = useState<AdditionalRoutePoint[]>([]);
   const [additionalUnloadingPoints, setAdditionalUnloadingPoints] = useState<AdditionalRoutePoint[]>([]);
 
-  const [
-    supplierInvoiceFiles,
-    setSupplierInvoiceFiles,
-  ] =
-    useState<File[]>(
-      []
-    );
+  const [invoiceFiles, setInvoiceFiles] = useState<InvoiceFiles>({ OUR: [], SUPPLIER: [] });
+  const { OUR: ourInvoiceFiles, SUPPLIER: supplierInvoiceFiles } = invoiceFiles;
+  const [invoicePreviews, setInvoicePreviews] = useState(new Map<File, InvoicePreview>());
+  const internalChoices = useRef(new WeakMap<File, InvoiceBlock>());
+  const previewRequests = useRef(new WeakMap<File, symbol>());
 
+  async function previewInvoice(file: File, kind: InvoiceBlock) {
+    const request = Symbol();
+    previewRequests.current.set(file, request);
+    let preview: InvoicePreview;
+    try {
+      const result = await requestInvoiceValidation(kind, file);
+      preview = { company: result.classification?.ourCompanyName, detectedKind: result.classification?.detectedKind, accepted: result.accepted === true, message: result.message };
+    } catch (error) {
+      preview = { accepted: false, message: error instanceof Error ? error.message : 'Ошибка проверки счёта.' };
+    }
+    if (previewRequests.current.get(file) === request) {
+      setInvoicePreviews(current => new Map(current).set(file, preview));
+      const target = preview.detectedKind;
+      if ((target === 'OUR' || target === 'SUPPLIER') && target !== kind) {
+        setInvoiceFiles(current => moveInvoice(current, file, kind, target));
+      }
+    }
+  }
 
-  const [
-    ourInvoiceFiles,
-    setOurInvoiceFiles,
-  ] =
-    useState<File[]>(
-      []
-    );
+  function chooseInvoiceBlock(file: File, from: InvoiceBlock, to: InvoiceBlock) {
+    const destination = to === 'OUR' ? ourInvoiceFiles : supplierInvoiceFiles;
+    if (from !== to && destination.length >= 10) {
+      setInvoiceAlertMessage('В выбранном блоке уже 10 счетов.');
+      return;
+    }
+    if (from !== to && destination.some(other => other.name === file.name && other.size === file.size && other.lastModified === file.lastModified)) {
+      setInvoiceAlertMessage('Этот файл уже добавлен в выбранный блок.');
+      return;
+    }
+    if (invoicePreviews.get(file)?.detectedKind === 'INTERNAL') internalChoices.current.set(file, to);
+    setInvoiceFiles(current => moveInvoice(current, file, from, to));
+    void previewInvoice(file, to);
+  }
 
+  function renderClassification(file: File, kind: InvoiceBlock) {
+    const preview = invoicePreviews.get(file);
+    if (!preview) return <small>Распознавание счёта…</small>;
+    const target = preview.detectedKind;
+    return <div aria-live="polite">
+      <small>{target === kind && preview.company
+        ? (kind === 'OUR' ? 'Продавец: ' : 'Покупатель: ') + preview.company
+        : preview.message}</small>
+      {!preview.accepted && (['OUR', 'SUPPLIER'] as const).filter(option =>
+        target === 'INTERNAL' || (target === option && kind !== option)
+      ).map(option => <button key={option} type="button" disabled={submitting}
+        onClick={() => chooseInvoiceBlock(file, kind, option)}>
+        {option === 'OUR' ? 'В наши счета' : 'В счета от поставщика'}
+      </button>)}
+    </div>;
+  }
 
   const [
     supplierIsDragging,
@@ -673,19 +732,13 @@ export default function TransportRequestForm({
       );
 
 
-    if (
-      kind ===
-      'SUPPLIER'
-    ) {
-      setSupplierInvoiceFiles(
-        limitedFiles
-      );
-    } else {
-      setOurInvoiceFiles(
-        limitedFiles
-      );
+    for (const file of limitedFiles) {
+      if (!currentFiles.includes(file)) void previewInvoice(file, kind);
     }
 
+    const added = limitedFiles.filter(file => !currentFiles.includes(file));
+    setInvoiceFiles(current => ({ ...current, [kind]: [...current[kind],
+      ...added.filter(file => !current[kind].some(existing => sameFile(existing, file)))].slice(0, 10) }));
 
     if (
       nextFiles.length >
@@ -778,36 +831,16 @@ export default function TransportRequestForm({
     index:
       number
   ) {
-    if (
-      kind ===
-      'SUPPLIER'
-    ) {
-      setSupplierInvoiceFiles(
-        (current) =>
-          current.filter(
-            (_, currentIndex) =>
-              currentIndex !==
-              index
-          )
-      );
-
-      clearFieldError(
-        'supplierInvoiceFiles'
-      );
-    } else {
-      setOurInvoiceFiles(
-        (current) =>
-          current.filter(
-            (_, currentIndex) =>
-              currentIndex !==
-              index
-          )
-      );
-
-      clearFieldError(
-        'ourInvoiceFiles'
-      );
-    }
+    const file = invoiceFiles[kind][index];
+    previewRequests.current.delete(file);
+    internalChoices.current.delete(file);
+    setInvoicePreviews(current => {
+      const next = new Map(current);
+      next.delete(file);
+      return next;
+    });
+    setInvoiceFiles(current => ({ ...current, [kind]: current[kind].filter(item => item !== file) }));
+    clearFieldError(kind === 'OUR' ? 'ourInvoiceFiles' : 'supplierInvoiceFiles');
   }
 
 
@@ -1135,6 +1168,7 @@ export default function TransportRequestForm({
     );
 
 
+    if (internalChoices.current.get(file) === kind) invoiceFormData.set('internalKind', kind);
     const response =
       await fetch(
         '/api/transport-request/invoice',
@@ -1180,7 +1214,7 @@ export default function TransportRequestForm({
   }
 
 
-  async function validateInvoiceBeforeSubmit(
+  async function requestInvoiceValidation(
     kind:
       'SUPPLIER' |
       'OUR',
@@ -1205,6 +1239,7 @@ export default function TransportRequestForm({
     );
 
 
+    if (internalChoices.current.get(file) === kind) validationFormData.set('internalKind', kind);
     const response =
       await fetch(
         '/api/transport-request/invoice/validate',
@@ -1235,22 +1270,13 @@ export default function TransportRequestForm({
     }
 
 
-    if (
-      !response.ok ||
-      !result.success ||
-      result.accepted !==
-        true
-    ) {
-      throw new Error(
-        result.message ||
-        'Не удалось проверить счёт.'
-      );
-    }
-
-
-    return result;
+    return { ...result, accepted: response.ok && result.success && result.accepted === true };
   }
 
+  async function validateInvoiceBeforeSubmit(kind: InvoiceBlock, file: File) {
+    const result = await requestInvoiceValidation(kind, file);
+    if (!result.accepted) throw new Error(file.name + ': ' + (result.message || 'Не удалось проверить счёт.'));
+  }
 
   async function handleSubmit(
     event:
@@ -1757,13 +1783,9 @@ export default function TransportRequestForm({
                 ''
               );
 
-              setSupplierInvoiceFiles(
-                []
-              );
-
-              setOurInvoiceFiles(
-                []
-              );
+              setInvoiceFiles({ OUR: [], SUPPLIER: [] });
+              previewRequests.current = new WeakMap();
+              setInvoicePreviews(new Map());
               setAdditionalLoadingPoints([]);
               setAdditionalUnloadingPoints([]);
 
@@ -4246,6 +4268,7 @@ export default function TransportRequestForm({
                         >
                           {file.name}
                         </div>
+                        {renderClassification(file, 'SUPPLIER')}
 
                         <div
                           className={
@@ -4508,6 +4531,7 @@ export default function TransportRequestForm({
                         >
                           {file.name}
                         </div>
+                        {renderClassification(file, 'OUR')}
 
                         <div
                           className={

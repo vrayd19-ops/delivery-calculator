@@ -279,6 +279,7 @@ export async function POST(
   try {
     classification =
       await classifyTransportRequestInvoice({
+        manualKind: formData.get("internalKind") === kind ? kind : undefined,
         file,
 
         expectedKind:
@@ -320,6 +321,8 @@ export async function POST(
           classification.message,
 
         classification: {
+        ourCompanyName: classification.ourCompanyName,
+        ourCompanyInn: classification.ourCompanyInn,
           detectedKind:
             classification
               .detectedKind,
@@ -367,9 +370,11 @@ export async function POST(
         true,
 
       message:
-        'Счёт успешно проверен.',
+        classification.message,
 
       classification: {
+        ourCompanyName: classification.ourCompanyName,
+        ourCompanyInn: classification.ourCompanyInn,
         detectedKind:
           classification
             .detectedKind,

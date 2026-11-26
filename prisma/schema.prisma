@@ -220,6 +220,8 @@ model TransportRequestInvoice {
   fileType String
   fileSize Int
 
+  ourCompanyInn  String?
+  ourCompanyName String?
   invoiceNumber String?
   invoiceDate   DateTime? @db.Date
   invoiceAmount Decimal?  @db.Decimal(14, 2)
